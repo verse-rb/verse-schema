@@ -8,7 +8,7 @@ RSpec.describe Verse::Schema::Coalescer do
         expect(subject.transform("foo", String)).to eq("foo")
         expect(subject.transform(1, String)).to eq("1")
         expect(subject.transform(1.0, String)).to eq("1.0")
-        expect(subject.transform(nil, String)).to eq("")
+        expect{ subject.transform(nil, String) }.to raise_error(Verse::Schema::Coalescer::Error)
       end
     end
 

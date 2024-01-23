@@ -7,7 +7,14 @@ module Verse
   module Schema
     module Coalescer
       register(String) do |value, _opts|
-        value.to_s
+        case value
+        when String
+          value
+        when Numeric
+          value.to_s
+        else
+          raise Coalescer::Error, "Invalid string `#{value}`"
+        end
       end
 
       register(Integer) do |value, _opts|
@@ -130,7 +137,7 @@ module Verse
         end
       end
 
-      register(nil) do |value, _opts|
+      register(nil, NilClass) do |value, _opts|
         next nil if value.nil? || value == ""
 
         raise Coalescer::Error, "Invalid `#{value}`"

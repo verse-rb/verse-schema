@@ -4,7 +4,13 @@ module Verse
 
       def filled(message = "must be filled")
         rule(message) do |value, output|
-          value.is_a?(String) && !value.empty?
+          if value.respond_to?(:empty?)
+            !value.empty?
+          elsif !value
+            false
+          else
+            true
+          end
         end
       end
 

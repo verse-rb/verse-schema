@@ -46,4 +46,15 @@ module Examples
       schema[:age] >= 18 && schema[:name] != "John"
     end
   end
+
+  MULTIPLE_TYPES_FIELD = Verse::Schema.define do
+    content_hash = Verse::Schema.define do
+      field(:content, String).filled
+      field :created_at, Time
+    end
+
+    field :title, String
+    field(:content, [String, content_hash]).filled
+  end
+
 end

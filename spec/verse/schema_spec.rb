@@ -277,5 +277,39 @@ RSpec.describe Verse::Schema do
       end
 
     end
+
+    context "MULTIPLE_TYPES_FIELD" do
+      it "validates" do
+        result = Examples::MULTIPLE_TYPES_FIELD.validate({
+          "title" => "Hello",
+          "content" => "World"
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          title: "Hello",
+          content: "World"
+        })
+      end
+
+      it "validates (subhash)" do
+        result = Examples::MULTIPLE_TYPES_FIELD.validate({
+          "title" => "Hello",
+          "content" => {
+            "content" => "World",
+            "created_at" => "2011-10-05T14:48:00.000Z"
+          }
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          title: "Hello",
+          content: {
+            content: "World",
+            created_at: Time.parse("2011-10-05T14:48:00.000Z")
+          }
+        })
+      end
+    end
   end
 end

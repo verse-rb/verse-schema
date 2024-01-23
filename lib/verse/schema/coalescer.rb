@@ -44,7 +44,11 @@ module Verse
 
             type.each do |t|
               catch(:next) do
-                converted = @mapping.fetch(t) { throw(:next) }.call(value, opts)
+                if t.is_a?(Base)
+                  converted = DEFAULT_MAPPER.call(t).call(value, opts)
+                else
+                  converted = @mapping.fetch(t) { throw(:next) }.call(value, opts)
+                end
                 has_result = true
                 break
               end
