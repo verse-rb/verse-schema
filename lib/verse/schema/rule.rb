@@ -11,8 +11,8 @@ module Verse
         @assertion = assertion
       end
 
-      def call(value, output)
-        @assertion.call(value, output)
+      def call(value, output, error_builder)
+        @assertion.call(value, output, error_builder)
       end
     end
   end

@@ -82,7 +82,7 @@ module Verse
           output[@name] = coalesced_value
 
           @rules&.each do |rule|
-            unless rule.call(coalesced_value, output)
+            unless rule.call(coalesced_value, output, nil)
               error_builder.add(@name, rule.message)
             end
           end

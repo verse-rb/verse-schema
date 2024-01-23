@@ -54,6 +54,16 @@ module Verse
           end
         end
 
+        @rules.each do |fields, rule|
+          if fields.all? { |field| output.key?(field) }
+            unless rule.call(output, output, error_builder)
+              fields.each do |f|
+                error_builder.add(f, rule.message)
+              end
+            end
+          end
+        end
+
         Result.new(output, error_builder.errors)
       end
     end
