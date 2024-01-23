@@ -111,5 +111,61 @@ RSpec.describe Verse::Schema do
         })
       end
     end
+
+    context "ARRAY_SCHEMA" do
+      it "validates" do
+        result = Examples::ARRAY_SCHEMA.validate({
+          "data" => [
+            {
+              "name" => "John Doe",
+              "age" => 30
+            },
+            {
+              "name" => "Jane Doe",
+              "age" => 20
+            }
+          ]
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          data: [
+            {
+              name: "John Doe",
+              age: 30
+            },
+            {
+              name: "Jane Doe",
+              age: 20
+            }
+          ]
+        })
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::ARRAY_SCHEMA.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({data: ["is required"]})
+      end
+
+      it "shows proper keys on failure" do
+        result = Examples::ARRAY_SCHEMA.validate({
+          "data" => [
+            {
+              "age" => 30
+            },
+            {
+              "name" => "Jane Doe",
+              "age" => 17
+            }
+          ]
+        })
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          "data.0.name": ["is required"],
+          "data.1.age": ["must be 18 or older"]
+        })
+      end
+    end
   end
 end
