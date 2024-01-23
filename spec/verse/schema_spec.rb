@@ -166,6 +166,116 @@ RSpec.describe Verse::Schema do
           "data.1.age": ["must be 18 or older"]
         })
       end
+
+      it "shows proper keys on failure (non correct type)" do
+        result = Examples::ARRAY_SCHEMA.validate({
+          "data" => [
+            {
+              "name" => "John Doe",
+              "age" => 30
+            },
+            "incorrect type"
+          ]
+        })
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          "data.1": ["hash expected"]
+        })
+      end
+    end
+
+    context "ARRAY_SCHEMA_WITH_BLOCK" do
+      it "validates" do
+        result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({
+          "data" => [
+            {
+              "name" => "John Doe",
+              "age" => 30
+            },
+            {
+              "name" => "Jane Doe",
+              "age" => "20"
+            }
+          ]
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          data: [
+            {
+              name: "John Doe",
+              age: 30
+            },
+            {
+              name: "Jane Doe",
+              age: 20
+            }
+          ]
+        })
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({data: ["is required"]})
+      end
+
+      it "shows proper keys on failure" do
+        result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({
+          "data" => [
+            {
+              "name" => "",
+              "age" => 30
+            },
+            {
+              "name" => "Jane Doe",
+              "age" => 17
+            }
+          ]
+        })
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          "data.0.name": ["must be filled"],
+          "data.1.age": ["must be 18 or older"]
+        })
+      end
+    end
+
+    context "MULTIPLE_FIELDS_RULE" do
+      it "validates" do
+        result = Examples::MULTIPLE_FIELDS_RULE.validate({
+          "name" => "John Doe",
+          "age" => 30
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          name: "John Doe",
+          age: 30
+        })
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::MULTIPLE_FIELDS_RULE.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          age: ["is required"],
+          name: ["is required"]
+        })
+      end
+
+      it "shows proper keys on failure" do
+        result = Examples::MULTIPLE_FIELDS_RULE.validate({
+          "name" => "John Doe",
+          "age" => 17
+        })
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          age: ["Age must be 18 and name must be John"],
+          name: ["Age must be 18 and name must be John"]
+        })
+      end
+
     end
   end
 end

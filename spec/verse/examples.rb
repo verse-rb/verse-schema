@@ -32,8 +32,8 @@ module Examples
   # Array schema with block
   ARRAY_SCHEMA_WITH_BLOCK = Verse::Schema.define do
     field(:data, Array) do
-      field(:name, String)
-      field(:age, Integer)
+      field(:name, String).filled
+      field(:age, Integer).rule(MUST_BE_MAJOR)
     end
   end
 
