@@ -98,4 +98,43 @@ module Examples
     end
   end
 
+
+  # Complex example using almost everything:
+  COMPLEX_EXAMPLE = Verse::Schema.define do
+
+    facebook_event = define do
+      field(:url, String).filled
+
+      extra_fields
+    end
+
+    google_event = define do
+      field(:search, String).filled
+
+      extra_fields
+    end
+
+    event = define do
+      field(:at, Time)
+      field(:type, Symbol).in?(%i[created updated])
+      field(:provider, String).in?(%w[facebook google])
+
+      field(:data, [facebook_event, google_event])
+      field(:source, String).filled
+
+      rule(:data, "invalid event data structure") do |hash|
+        case hash[:provider]
+        when "facebook"
+          facebook_event.valid?(hash[:data])
+        when "google"
+          google_event.valid?(hash[:data])
+        else
+          false
+        end
+      end
+    end
+
+    field(:events, Array, of: event)
+  end
+
 end

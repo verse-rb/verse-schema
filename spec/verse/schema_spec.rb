@@ -638,4 +638,61 @@ RSpec.describe Verse::Schema do
       end
     end
   end
+
+  context "COMPLEX_EXAMPLE" do
+    it "validates" do
+      result = Examples::COMPLEX_EXAMPLE.validate(
+        "events" => [{
+          "at" => "2011-10-05T14:48:00.000Z",
+          "type" => "created",
+          "provider" => "facebook",
+          "data" => {
+            "url" => "https://facebook.com/123",
+            "name" => "John Doe",
+            "age" => 30
+          },
+          "source" => "facebook"
+        }]
+      )
+      expect(result.errors).to eq({})
+      expect(result.fail?).to be(false)
+      expect(result.value).to eq(
+        events: [{
+          at: Time.parse("2011-10-05T14:48:00.000Z"),
+          type: :created,
+          provider: "facebook",
+          data: {
+            url: "https://facebook.com/123",
+            name: "John Doe",
+            age: 30
+          },
+          source: "facebook"
+        }]
+      )
+    end
+
+    it "fails if wrong event structure" do
+      # rule says that google event requires search
+      result = Examples::COMPLEX_EXAMPLE.validate(
+        "events" => [{
+          "at" => "2011-10-05T14:48:00.000Z",
+          "type" => "created",
+          "provider" => "google",
+          "data" => {
+            "url" => "https://facebook.com/123",
+            "name" => "John Doe",
+            "age" => 30
+          },
+          "source" => "facebook"
+        }]
+      )
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          "events.0.data": ["invalid event data structure"]
+        }
+      )
+    end
+  end
+
 end

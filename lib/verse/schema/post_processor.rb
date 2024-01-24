@@ -47,7 +47,7 @@ module Verse
 
         begin
           output = @block.call(value, error, @opts)
-        rescue RuntimeError => e
+        rescue StandardError => e
           error.call(e.message)
         end
 

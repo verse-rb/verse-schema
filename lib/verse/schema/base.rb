@@ -30,6 +30,10 @@ module Verse
         )
       end
 
+      def define(&block)
+        Verse::Schema.define(&block)
+      end
+
       def transform(&block)
         @post_processors.attach(
           PostProcessor.new(&block)
@@ -48,6 +52,10 @@ module Verse
 
       def extra_fields
         @extra_fields = true
+      end
+
+      def valid?(input)
+        validate(input).success?
       end
 
       def validate(input, error_builder = nil)

@@ -41,20 +41,21 @@ module Verse
             converted = nil
 
             type.each do |t|
-              catch(:next) do
-                converted = if t.is_a?(Base)
-                              DEFAULT_MAPPER.call(t).call(value, opts)
-                            else
-                              @mapping.fetch(t) { throw(:next) }.call(value, opts)
-                            end
+              converted = @mapping.fetch(t) do
+                  DEFAULT_MAPPER.call(t)
+                end.call(value, opts)
+
+              if !converted.is_a?(Result) ||
+                (converted.is_a?(Result) && converted.success?)
                 has_result = true
                 break
               end
-            rescue Error
-              next
+
+            rescue StandardError
+              # next
             end
 
-            return converted if has_result
+            return converted if has_result || converted.is_a?(Result)
 
             raise Error, "Invalid cast to `#{type}` for `#{value}`"
           else
