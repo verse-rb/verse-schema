@@ -407,8 +407,8 @@ RSpec.describe Verse::Schema do
         expect(result.success?).to be(false)
         expect(result.errors).to eq(
           {
-            age: ["Age must be 18 and name must be John"],
-            name: ["Age must be 18 and name must be John"]
+            age: ["Age must be 18 and name must NOT be John"],
+            name: ["Age must be 18 and name must NOT be John"]
           }
         )
       end

@@ -47,7 +47,7 @@ module Examples
     field(:name, String)
     field(:age, Integer)
 
-    rule(%i[age name], "Age must be 18 and name must be John") do |schema|
+    rule(%i[age name], "Age must be 18 and name must NOT be John") do |schema|
       schema[:age] >= 18 && schema[:name] != "John"
     end
   end

@@ -8,7 +8,7 @@ require_relative "./post_processor"
 module Verse
   module Schema
     class Base
-      attr_reader :fields
+      attr_reader :fields, :post_processors
 
       def initialize(&block)
         @fields = []
