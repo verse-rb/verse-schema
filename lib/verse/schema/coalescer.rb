@@ -11,20 +11,18 @@ module Verse
         case type
         when Base
           proc do |value, _opts|
-            if value.is_a?(Hash)
-              type.validate(value)
-            else
-              raise Error, "hash expected"
-            end
+            raise Error, "hash expected" unless value.is_a?(Hash)
+
+            type.validate(value)
           end
         when Class
-          proc do |value, _opts, key, error|
+          proc do |value, _opts, _key, _error|
             return value if value.is_a?(type)
 
             raise Error, "Invalid cast to `#{type}` for `#{value}`"
           end
         else
-          proc do |value, _opts, key, error|
+          proc do |value, _opts, _key, _error|
             raise Error, "Invalid cast to `#{type}` for `#{value}`"
           end
         end
@@ -37,18 +35,18 @@ module Verse
           end
         end
 
-        def transform(value, type, opts={})
+        def transform(value, type, opts = {})
           if type.is_a?(Array)
             has_result = false
             converted = nil
 
             type.each do |t|
               catch(:next) do
-                if t.is_a?(Base)
-                  converted = DEFAULT_MAPPER.call(t).call(value, opts)
-                else
-                  converted = @mapping.fetch(t) { throw(:next) }.call(value, opts)
-                end
+                converted = if t.is_a?(Base)
+                              DEFAULT_MAPPER.call(t).call(value, opts)
+                            else
+                              @mapping.fetch(t) { throw(:next) }.call(value, opts)
+                            end
                 has_result = true
                 break
               end

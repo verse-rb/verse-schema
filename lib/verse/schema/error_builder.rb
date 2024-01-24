@@ -17,7 +17,7 @@ module Verse
         )
       end
 
-      def combine(another_error_builder, key)
+      def combine(another_error_builder, _key)
         another_error_builder
       end
 

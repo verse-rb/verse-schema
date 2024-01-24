@@ -19,7 +19,7 @@ module Verse
         @rules += another_schema.rules
       end
 
-      def rule(fields, message="rule failed", &block)
+      def rule(fields, message = "rule failed", &block)
         fields = [fields] unless fields.is_a?(Array)
         @rules << [fields, Rule.new(message, block)]
       end
@@ -55,20 +55,18 @@ module Verse
         end
 
         @rules.each do |fields, rule|
-          if fields.all? { |field| output.key?(field) }
-            unless rule.call(output, output, error_builder)
-              fields.each do |f|
-                error_builder.add(f, rule.message)
-              end
-            end
+          next unless fields.all? { |field| output.key?(field) }
+
+          next if rule.call(output, output, error_builder)
+
+          fields.each do |f|
+            error_builder.add(f, rule.message)
           end
         end
 
         if @extra_fields
           input.each do |key, value|
-            unless @fields.any? { |field| field.key.to_s == key.to_s }
-              output[key.to_sym] = value
-            end
+            output[key.to_sym] = value unless @fields.any? { |field| field.key.to_s == key.to_s }
           end
         end
 

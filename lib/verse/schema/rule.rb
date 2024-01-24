@@ -3,8 +3,7 @@
 module Verse
   module Schema
     class Rule
-      attr_reader :message
-      attr_reader :assertion
+      attr_reader :message, :assertion
 
       def initialize(message, assertion)
         @message = message

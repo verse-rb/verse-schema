@@ -65,24 +65,22 @@ module Verse
       register(Hash) do |value, opts|
         case value
         when Hash
-          case
-          when opts[:block]
+          if opts[:block]
             schema = Verse::Schema.define(&opts[:block])
             schema.validate(value)
-          when opts[:as]
+          elsif opts[:as]
             opts[:as].validate(value)
-          when opts[:of]
+          elsif opts[:of]
             # open hash with validation on keys:
             error_builder = Verse::Schema::ErrorBuilder.new
 
-            output = value.inject({}) do |(k, v), h|
+            output = value.inject({}) do |(k, _v), h|
               field = Coalescer.transform(k, opts[:of], {})
 
               if field.is_a?(Result)
                 error_builder.combine(k, field.errors)
                 h[k] = field.value
               end
-
             rescue Coalescer::Error => e
               error_builder.add(k, e.message)
             end
@@ -102,15 +100,10 @@ module Verse
       register(Array) do |value, opts|
         case value
         when Array
-          type = nil
 
-          if opts[:block]
-            schema = Verse::Schema.define(&opts[:block])
-          end
+          schema = Verse::Schema.define(&opts[:block]) if opts[:block]
 
-          if opts[:of]
-            schema = opts[:of]
-          end
+          schema = opts[:of] if opts[:of]
 
           if schema.nil?
             next value # open array.

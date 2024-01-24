@@ -14,7 +14,7 @@ module Examples
   # optional field
   OPTIONAL_FIELD_SCHEMA = Verse::Schema.define do
     field(:name, String).label("Name").description("The name of the person")
-    field?(:age, Integer).rule("must be 18 or older"){ |age| age >= 18 }
+    field?(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
   end
 
   # nested schema
@@ -62,5 +62,4 @@ module Examples
 
     extra_fields
   end
-
 end

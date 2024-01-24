@@ -11,331 +11,329 @@ RSpec.describe Verse::Schema do
     context "SIMPLE_SCHEMA" do
       it "validates" do
         result = Examples::SIMPLE_SCHEMA.validate({
-          "name" => "John Doe",
-          age: "30" # Auto-coalesce
-        })
+                                                    "name" => "John Doe",
+                                                    age: "30" # Auto-coalesce
+                                                  })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          name: "John Doe",
-          age: 30
-        })
+                                     name: "John Doe",
+                                     age: 30
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::SIMPLE_SCHEMA.validate({})
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          age: ["is required"],
-          name: ["is required"]
-        })
+                                      age: ["is required"],
+                                      name: ["is required"]
+                                    })
       end
 
       it "fails on rules" do
         result = Examples::SIMPLE_SCHEMA.validate({
-          "age" => 17,
-          "name" => "Tony"
-        })
+                                                    "age" => 17,
+                                                    "name" => "Tony"
+                                                  })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          age: ["must be 18 or older"]
-        })
+                                      age: ["must be 18 or older"]
+                                    })
       end
-
     end
 
     context "OPTIONAL_FIELD_SCHEMA" do
       it "validates" do
         result = Examples::OPTIONAL_FIELD_SCHEMA.validate({
-          "name" => "John Doe"
-        })
+                                                            "name" => "John Doe"
+                                                          })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          name: "John Doe"
-        })
+                                     name: "John Doe"
+                                   })
       end
 
       it "stills fails if rule is invalid on optional field" do
         result = Examples::OPTIONAL_FIELD_SCHEMA.validate({
-          "name" => "John Doe",
-          "age" => 17
-        })
+                                                            "name" => "John Doe",
+                                                            "age" => 17
+                                                          })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          age: ["must be 18 or older"]
-        })
+                                      age: ["must be 18 or older"]
+                                    })
       end
 
       it "fails with complete errors list" do
         result = Examples::OPTIONAL_FIELD_SCHEMA.validate({})
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({name: ["is required"]})
+        expect(result.errors).to eq({ name: ["is required"] })
       end
     end
 
     context "NESTED_SCHEMA" do
       it "validates" do
         result = Examples::NESTED_SCHEMA.validate({
-          "data" => {
-            "name" => "John Doe",
-            "age" => 30
-          }
-        })
+                                                    "data" => {
+                                                      "name" => "John Doe",
+                                                      "age" => 30
+                                                    }
+                                                  })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          data: {
-            name: "John Doe",
-            age: 30
-          }
-        })
+                                     data: {
+                                       name: "John Doe",
+                                       age: 30
+                                     }
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::NESTED_SCHEMA.validate({})
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({data: ["is required"]})
+        expect(result.errors).to eq({ data: ["is required"] })
       end
 
       it "show proper keys on failure" do
         result = Examples::NESTED_SCHEMA.validate({
-          "data" => {
-            "age" => 17
-          }
-        })
+                                                    "data" => {
+                                                      "age" => 17
+                                                    }
+                                                  })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          "data.age": ["must be 18 or older"],
-          "data.name": ["is required"]
-        })
+                                      "data.age": ["must be 18 or older"],
+                                      "data.name": ["is required"]
+                                    })
       end
     end
 
     context "ARRAY_SCHEMA" do
       it "validates" do
         result = Examples::ARRAY_SCHEMA.validate({
-          "data" => [
-            {
-              "name" => "John Doe",
-              "age" => 30
-            },
-            {
-              "name" => "Jane Doe",
-              "age" => 20
-            }
-          ]
-        })
+                                                   "data" => [
+                                                     {
+                                                       "name" => "John Doe",
+                                                       "age" => 30
+                                                     },
+                                                     {
+                                                       "name" => "Jane Doe",
+                                                       "age" => 20
+                                                     }
+                                                   ]
+                                                 })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          data: [
-            {
-              name: "John Doe",
-              age: 30
-            },
-            {
-              name: "Jane Doe",
-              age: 20
-            }
-          ]
-        })
+                                     data: [
+                                       {
+                                         name: "John Doe",
+                                         age: 30
+                                       },
+                                       {
+                                         name: "Jane Doe",
+                                         age: 20
+                                       }
+                                     ]
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::ARRAY_SCHEMA.validate({})
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({data: ["is required"]})
+        expect(result.errors).to eq({ data: ["is required"] })
       end
 
       it "shows proper keys on failure" do
         result = Examples::ARRAY_SCHEMA.validate({
-          "data" => [
-            {
-              "age" => 30
-            },
-            {
-              "name" => "Jane Doe",
-              "age" => 17
-            }
-          ]
-        })
+                                                   "data" => [
+                                                     {
+                                                       "age" => 30
+                                                     },
+                                                     {
+                                                       "name" => "Jane Doe",
+                                                       "age" => 17
+                                                     }
+                                                   ]
+                                                 })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          "data.0.name": ["is required"],
-          "data.1.age": ["must be 18 or older"]
-        })
+                                      "data.0.name": ["is required"],
+                                      "data.1.age": ["must be 18 or older"]
+                                    })
       end
 
       it "shows proper keys on failure (non correct type)" do
         result = Examples::ARRAY_SCHEMA.validate({
-          "data" => [
-            {
-              "name" => "John Doe",
-              "age" => 30
-            },
-            "incorrect type"
-          ]
-        })
+                                                   "data" => [
+                                                     {
+                                                       "name" => "John Doe",
+                                                       "age" => 30
+                                                     },
+                                                     "incorrect type"
+                                                   ]
+                                                 })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          "data.1": ["hash expected"]
-        })
+                                      "data.1": ["hash expected"]
+                                    })
       end
     end
 
     context "ARRAY_SCHEMA_WITH_BLOCK" do
       it "validates" do
         result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({
-          "data" => [
-            {
-              "name" => "John Doe",
-              "age" => 30
-            },
-            {
-              "name" => "Jane Doe",
-              "age" => "20"
-            }
-          ]
-        })
+                                                              "data" => [
+                                                                {
+                                                                  "name" => "John Doe",
+                                                                  "age" => 30
+                                                                },
+                                                                {
+                                                                  "name" => "Jane Doe",
+                                                                  "age" => "20"
+                                                                }
+                                                              ]
+                                                            })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          data: [
-            {
-              name: "John Doe",
-              age: 30
-            },
-            {
-              name: "Jane Doe",
-              age: 20
-            }
-          ]
-        })
+                                     data: [
+                                       {
+                                         name: "John Doe",
+                                         age: 30
+                                       },
+                                       {
+                                         name: "Jane Doe",
+                                         age: 20
+                                       }
+                                     ]
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({})
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({data: ["is required"]})
+        expect(result.errors).to eq({ data: ["is required"] })
       end
 
       it "shows proper keys on failure" do
         result = Examples::ARRAY_SCHEMA_WITH_BLOCK.validate({
-          "data" => [
-            {
-              "name" => "",
-              "age" => 30
-            },
-            {
-              "name" => "Jane Doe",
-              "age" => 17
-            }
-          ]
-        })
+                                                              "data" => [
+                                                                {
+                                                                  "name" => "",
+                                                                  "age" => 30
+                                                                },
+                                                                {
+                                                                  "name" => "Jane Doe",
+                                                                  "age" => 17
+                                                                }
+                                                              ]
+                                                            })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          "data.0.name": ["must be filled"],
-          "data.1.age": ["must be 18 or older"]
-        })
+                                      "data.0.name": ["must be filled"],
+                                      "data.1.age": ["must be 18 or older"]
+                                    })
       end
     end
 
     context "MULTIPLE_FIELDS_RULE" do
       it "validates" do
         result = Examples::MULTIPLE_FIELDS_RULE.validate({
-          "name" => "John Doe",
-          "age" => 30
-        })
+                                                           "name" => "John Doe",
+                                                           "age" => 30
+                                                         })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          name: "John Doe",
-          age: 30
-        })
+                                     name: "John Doe",
+                                     age: 30
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::MULTIPLE_FIELDS_RULE.validate({})
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          age: ["is required"],
-          name: ["is required"]
-        })
+                                      age: ["is required"],
+                                      name: ["is required"]
+                                    })
       end
 
       it "shows proper keys on failure" do
         result = Examples::MULTIPLE_FIELDS_RULE.validate({
-          "name" => "John Doe",
-          "age" => 17
-        })
+                                                           "name" => "John Doe",
+                                                           "age" => 17
+                                                         })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          age: ["Age must be 18 and name must be John"],
-          name: ["Age must be 18 and name must be John"]
-        })
+                                      age: ["Age must be 18 and name must be John"],
+                                      name: ["Age must be 18 and name must be John"]
+                                    })
       end
-
     end
 
     context "MULTIPLE_TYPES_FIELD" do
       it "validates" do
         result = Examples::MULTIPLE_TYPES_FIELD.validate({
-          "title" => "Hello",
-          "content" => "World"
-        })
+                                                           "title" => "Hello",
+                                                           "content" => "World"
+                                                         })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          title: "Hello",
-          content: "World"
-        })
+                                     title: "Hello",
+                                     content: "World"
+                                   })
       end
 
       it "validates (subhash)" do
         result = Examples::MULTIPLE_TYPES_FIELD.validate({
-          "title" => "Hello",
-          "content" => {
-            "content" => "World",
-            "created_at" => "2011-10-05T14:48:00.000Z"
-          }
-        })
+                                                           "title" => "Hello",
+                                                           "content" => {
+                                                             "content" => "World",
+                                                             "created_at" => "2011-10-05T14:48:00.000Z"
+                                                           }
+                                                         })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          title: "Hello",
-          content: {
-            content: "World",
-            created_at: Time.parse("2011-10-05T14:48:00.000Z")
-          }
-        })
+                                     title: "Hello",
+                                     content: {
+                                       content: "World",
+                                       created_at: Time.parse("2011-10-05T14:48:00.000Z")
+                                     }
+                                   })
       end
     end
 
     context "OPEN_HASH" do
       it "validates" do
         result = Examples::OPEN_HASH.validate({
-          "name" => "John Doe",
-          "age" => 30,
-          "unknown" => "value"
-        })
+                                                "name" => "John Doe",
+                                                "age" => 30,
+                                                "unknown" => "value"
+                                              })
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
         expect(result.value).to eq({
-          name: "John Doe",
-          age: 30,
-          unknown: "value"
-        })
+                                     name: "John Doe",
+                                     age: 30,
+                                     unknown: "value"
+                                   })
       end
 
       it "fails with complete errors list" do
         result = Examples::OPEN_HASH.validate({
-          "age" => 21
-        })
+                                                "age" => 21
+                                              })
         expect(result.success?).to be(false)
         expect(result.errors).to eq({
-          name: ["is required"]
-        })
+                                      name: ["is required"]
+                                    })
       end
     end
   end

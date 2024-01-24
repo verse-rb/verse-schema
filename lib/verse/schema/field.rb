@@ -59,6 +59,11 @@ module Verse
         end
       end
 
+      def transform(&block)
+        @transformers ||= []
+        @transformers << block
+      end
+
       def apply(value, output, error_builder)
         if @type.is_a?(Base)
           if value.is_a?(Hash)
@@ -70,27 +75,36 @@ module Verse
             error_builder.add(@name, "hash expected")
           end
         else
-          coalesced_value = (
+          coalesced_value =
             Coalescer.transform(value, @type, @opts)
-          )
 
           if coalesced_value.is_a?(Result)
             error_builder.combine(@name, coalesced_value.errors)
-            coalesced_value = coalesced_value.value
+
+            output[@name] = if coalesced_value.success? && @transformers
+                              @transformers.reduce(coalesced_value.value) do |value, transformer|
+                                transformer.call(value)
+                              end
+                            else
+                              coalesced_value.value
+                            end
+          else
+            output[@name] = if @transformers
+                              @transformers.reduce(coalesced_value) do |value, transformer|
+                                transformer.call(value)
+                              end
+                            else
+                              coalesced_value
+                            end
           end
 
-          output[@name] = coalesced_value
-
           @rules&.each do |rule|
-            unless rule.call(coalesced_value, output, nil)
-              error_builder.add(@name, rule.message)
-            end
+            error_builder.add(@name, rule.message) unless rule.call(coalesced_value, output, nil)
           end
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message)
       end
-
     end
   end
 end
