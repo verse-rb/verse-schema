@@ -20,7 +20,7 @@ module Verse
 
         return unless block_given?
 
-        @opts[:block] = block
+        @opts[:block] = Schema.define(&block)
       end
 
       option :label, default: -> { @name }

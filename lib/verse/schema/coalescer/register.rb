@@ -73,8 +73,7 @@ module Verse
         raise Coalescer::Error, "must be a hash" unless  value.is_a?(Hash)
 
         if opts[:block]
-          schema = Verse::Schema.define(&opts[:block])
-          schema.validate(value)
+          opts[:block].validate(value)
         elsif opts[:as]
           opts[:as].validate(value)
         elsif opts[:of]
@@ -111,9 +110,7 @@ module Verse
         case value
         when Array
 
-          schema = Verse::Schema.define(&opts[:block]) if opts[:block]
-
-          schema = opts[:of] if opts[:of]
+          schema = opts[:block] || opts[:of]
 
           if schema.nil?
             next value # open array.
