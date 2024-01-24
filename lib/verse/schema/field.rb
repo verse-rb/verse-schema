@@ -26,6 +26,7 @@ module Verse
       option :label, default: -> { @name }
       option :key, default: -> { @name }
       option :description, default: -> { nil }
+      option :type
 
       def optional
         @opts[:optional] = true
@@ -33,8 +34,27 @@ module Verse
         self
       end
 
+      def default(value = Optionable::NOTHING, &block)
+        if value == Optionable::NOTHING && !block_given?
+          if @default.is_a?(Proc)
+            @default.call
+          else
+            @default
+          end
+        else
+          @default = block || value
+          @has_default = true
+          optional
+        end
+      end
+
+      def default?
+        !!@has_default
+      end
+
       def required
         @opts[:optional] = false
+        @has_default = false
 
         self
       end

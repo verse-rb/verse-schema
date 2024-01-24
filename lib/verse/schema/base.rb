@@ -40,13 +40,13 @@ module Verse
         )
       end
 
-      def field(field_name, type, **opts, &block)
+      def field(field_name, type = Object, **opts, &block)
         field = Field.new(field_name, type, opts, &block)
         @fields << field
         field
       end
 
-      def field?(field_name, type, **opts, &block)
+      def field?(field_name, type = Object, **opts, &block)
         field(field_name, type, **opts, &block).optional
       end
 
@@ -69,6 +69,8 @@ module Verse
           if exists
             value = input[field.key.to_s] || input[field.key.to_sym]
             field.apply(value, output, error_builder)
+          elsif field.default?
+            field.apply(field.default, output, error_builder)
           elsif field.required?
             error_builder.add(field.key, "is required")
           end

@@ -639,6 +639,53 @@ RSpec.describe Verse::Schema do
     end
   end
 
+  context "DEFAULT_VALUE" do
+    it "has no default after required" do
+      result = Examples::DEFAULT_VALUE.validate(
+        {
+          has_no_default: "yep"
+        }
+      )
+
+      expect(result.fail?).to be(false)
+      expect(result.value).to eq({
+        type: "unknown",
+        ordered: false,
+        has_no_default: "yep"
+      })
+    end
+
+    it "requires disable default" do
+      result = Examples::DEFAULT_VALUE.validate(
+        {
+        }
+      )
+
+      expect(result.fail?).to be(true)
+      expect(result.errors).to eq({
+        has_no_default: ["is required"]
+      })
+    end
+
+    it "can still put value to default field" do
+      result = Examples::DEFAULT_VALUE.validate(
+        {
+          type: "known",
+          ordered: true,
+          has_no_default: "uh"
+        }
+      )
+
+      expect(result.fail?).to be(false)
+      expect(result.value).to eq({
+        type: "known",
+        ordered: true,
+        has_no_default: "uh"
+      })
+    end
+
+  end
+
   context "COMPLEX_EXAMPLE" do
     it "validates" do
       result = Examples::COMPLEX_EXAMPLE.validate(

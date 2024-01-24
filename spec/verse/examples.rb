@@ -98,6 +98,14 @@ module Examples
     end
   end
 
+  DEFAULT_VALUE = Verse::Schema.define do
+    # block default
+    field(:type, String).default{ "unknown" }
+    # param default
+    field(:ordered, TrueClass).default(false)
+    # reset default
+    field(:has_no_default, String).default("def").required # required after default remove defaut value
+  end
 
   # Complex example using almost everything:
   COMPLEX_EXAMPLE = Verse::Schema.define do

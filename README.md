@@ -44,7 +44,6 @@ Add this line to your application's Gemfile:
 
 ### Optional fields
 
-
 use `field?` or `field(...).optional` to make it optional.
 If the key is not found, it will be ignored.
 
@@ -81,6 +80,42 @@ To make it valid, you can define the field as union of `Integer` and `NilClass`:
 ```
 
 Note also the change in the rule, as the age can be `nil`, we need to handle it.
+
+### Default Field
+
+Use `default` to setup default field:
+
+```ruby
+  # Use a static value
+  field(:type, String).default("reply")
+
+  # or use a block which will be called:
+  field(:type, String).default{ "reply" }
+```
+
+Using `required` after `default` disable default:
+
+```ruby
+  field(:type, String).default("ignored").required
+```
+
+Default are called in front of the post-processing chain.
+
+This won't work:
+
+```ruby
+  field(:type, String).default{ MyClass.new("default") }.transform { |x| MyClass.new(x) }
+```
+
+Because the type testing is made AFTER the default value is set.
+
+This however can become handy to force a transformer like this the example below:
+
+```ruby
+  field(:type, [String, NilClass]).default(nil).transform{ |x|
+    MyClass.new(x || "default")
+  }
+```
 
 ### Nested schemas:
 

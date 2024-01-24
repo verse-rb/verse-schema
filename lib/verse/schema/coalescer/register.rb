@@ -19,13 +19,13 @@ module Verse
 
       register(Integer) do |value, _opts|
         Integer(value)
-      rescue StandardError
+      rescue TypeError, ArgumentError
         raise Coalescer::Error, "must be an integer"
       end
 
       register(Float) do |value, _opts|
         Float(value)
-      rescue StandardError
+      rescue TypeError, ArgumentError
         raise Coalescer::Error, "must be a float"
       end
 
@@ -52,7 +52,7 @@ module Verse
         else
           raise Coalescer::Error, "must be a datetime"
         end
-      rescue StandardError
+      rescue ArgumentError
         raise Coalescer::Error, "must be a datetime"
       end
 
@@ -65,51 +65,46 @@ module Verse
         else
           raise Coalescer::Error, "must be a date"
         end
-      rescue StandardError
+      rescue Date::Error
         raise Coalescer::Error, "must be a date"
       end
 
       register(Hash) do |value, opts|
-        case value
-        when Hash
-          if opts[:block]
-            schema = Verse::Schema.define(&opts[:block])
-            schema.validate(value)
-          elsif opts[:as]
-            opts[:as].validate(value)
-          elsif opts[:of]
-            # open hash with validation on keys:
-            error_builder = Verse::Schema::ErrorBuilder.new
+        raise Coalescer::Error, "must be a hash" unless  value.is_a?(Hash)
 
-            output = value.inject({}) do |h, (k,v)|
-              begin
-                field = Coalescer.transform(v, opts[:of])
+        if opts[:block]
+          schema = Verse::Schema.define(&opts[:block])
+          schema.validate(value)
+        elsif opts[:as]
+          opts[:as].validate(value)
+        elsif opts[:of]
+          # open hash with validation on keys:
+          error_builder = Verse::Schema::ErrorBuilder.new
 
-                if field.is_a?(Result)
-                  error_builder.combine(k, field.errors)
-                  h[k.to_sym] = field.value
-                else
-                  h[k.to_sym] = field
-                end
+          output = value.inject({}) do |h, (k,v)|
+            begin
+              field = Coalescer.transform(v, opts[:of])
 
-                h
-              rescue Coalescer::Error => e
-                error_builder.add(k, e.message)
-                h
+              if field.is_a?(Result)
+                error_builder.combine(k, field.errors)
+                h[k.to_sym] = field.value
+              else
+                h[k.to_sym] = field
               end
 
+              h
+            rescue Coalescer::Error => e
+              error_builder.add(k, e.message)
+              h
             end
 
-            Result.new(output, error_builder.errors)
-          else
-            # open hash
-            next value
           end
+
+          Result.new(output, error_builder.errors)
         else
-          raise Coalescer::Error, "must be a hash"
+          # open hash
+          next value
         end
-      rescue StandardError
-        raise Coalescer::Error, "must be a hash"
       end
 
       register(Array) do |value, opts|
