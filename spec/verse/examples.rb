@@ -62,4 +62,14 @@ module Examples
 
     extra_fields
   end
+
+  HASH_WITH_BLOCK = Verse::Schema.define do
+    field(:name, String)
+
+    field(:data, Hash) do
+      field(:name, String).filled
+      field(:age, Integer).rule(MUST_BE_MAJOR)
+    end
+  end
+
 end

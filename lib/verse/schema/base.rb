@@ -3,25 +3,37 @@
 require_relative "./field"
 require_relative "./result"
 require_relative "./error_builder"
-require_relative "./rule"
+require_relative "./post_processor"
 
 module Verse
   module Schema
     class Base
+      attr_reader :fields
+
       def initialize(&block)
         @fields = []
-        @rules = []
+        @post_processors = IDENTITY_PP.dup
         instance_eval(&block)
       end
 
       def extend(another_schema)
         @fields += another_schema.fields
-        @rules += another_schema.rules
+        @post_processors = another_schema.post_processors
       end
 
       def rule(fields, message = "rule failed", &block)
-        fields = [fields] unless fields.is_a?(Array)
-        @rules << [fields, Rule.new(message, block)]
+        @post_processors.attach(
+          PostProcessor.new do |value, error|
+            error.call(message, fields) unless block.call(value, error)
+            value
+          end
+        )
+      end
+
+      def transform(&block)
+        @post_processors.attach(
+          PostProcessor.new(&block)
+        )
       end
 
       def field(field_name, type, **opts, &block)
@@ -54,20 +66,14 @@ module Verse
           end
         end
 
-        @rules.each do |fields, rule|
-          next unless fields.all? { |field| output.key?(field) }
-
-          next if rule.call(output, output, error_builder)
-
-          fields.each do |f|
-            error_builder.add(f, rule.message)
-          end
-        end
-
         if @extra_fields
           input.each do |key, value|
             output[key.to_sym] = value unless @fields.any? { |field| field.key.to_s == key.to_s }
           end
+        end
+
+        if error_builder.errors.empty?
+          output = @post_processors.call(output, nil, error_builder)
         end
 
         Result.new(output, error_builder.errors)

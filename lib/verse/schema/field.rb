@@ -2,6 +2,7 @@
 
 require_relative "./optionable"
 require_relative "./coalescer"
+require_relative "./post_processor"
 
 module Verse
   module Schema
@@ -14,6 +15,8 @@ module Verse
         @name = name
         @type = type
         @opts = opts
+        # Setup identity processor
+        @post_processors = IDENTITY_PP.dup
 
         return unless block_given?
 
@@ -45,23 +48,22 @@ module Verse
       end
 
       def rule(rule, &block)
-        case rule
-        when String
-          @rules ||= []
-          @rules << Rule.new(rule, block)
+        rule_processor = \
+          case rule
+          when String
+            PostProcessor.new do |value, error|
+              error.call(rule) unless block.call(value, error)
+              value
+            end
+          when PostProcessor
+            rule
+          else
+            raise ArgumentError, "invalid rule type #{rule}"
+          end
 
-          self
-        when Rule
-          @rules ||= []
-          @rules << rule
+        @post_processors.attach(rule_processor)
 
-          self
-        end
-      end
-
-      def transform(&block)
-        @transformers ||= []
-        @transformers << block
+        self
       end
 
       def apply(value, output, error_builder)
@@ -75,36 +77,24 @@ module Verse
             error_builder.add(@name, "hash expected")
           end
         else
-          coalesced_value =
+          coalesced_value = (
             Coalescer.transform(value, @type, @opts)
+          )
 
           if coalesced_value.is_a?(Result)
             error_builder.combine(@name, coalesced_value.errors)
-
-            output[@name] = if coalesced_value.success? && @transformers
-                              @transformers.reduce(coalesced_value.value) do |value, transformer|
-                                transformer.call(value)
-                              end
-                            else
-                              coalesced_value.value
-                            end
-          else
-            output[@name] = if @transformers
-                              @transformers.reduce(coalesced_value) do |value, transformer|
-                                transformer.call(value)
-                              end
-                            else
-                              coalesced_value
-                            end
+            coalesced_value = coalesced_value.value
           end
 
-          @rules&.each do |rule|
-            error_builder.add(@name, rule.message) unless rule.call(coalesced_value, output, nil)
-          end
+          output[@name] = @post_processors.call(
+            coalesced_value, @name, error_builder
+          )
+
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message)
       end
+
     end
   end
 end
