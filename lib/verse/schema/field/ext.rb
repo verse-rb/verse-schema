@@ -14,6 +14,13 @@ module Verse
           end
         end
       end
+
+      def in?(values, message="must be one of %s")
+        rule(message % values.join(", ")) do |value, _output|
+          values.include?(value)
+        end
+      end
+
     end
   end
 end

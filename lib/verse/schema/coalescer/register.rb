@@ -13,27 +13,34 @@ module Verse
         when Numeric
           value.to_s
         else
-          raise Coalescer::Error, "Invalid string `#{value}`"
+          raise Coalescer::Error, "must be a string"
         end
       end
 
       register(Integer) do |value, _opts|
         Integer(value)
       rescue StandardError
-        raise Coalescer::Error, "Invalid integer `#{value}`"
+        raise Coalescer::Error, "must be an integer"
       end
 
       register(Float) do |value, _opts|
         Float(value)
       rescue StandardError
-        raise Coalescer::Error, "Invalid float `#{value}`"
+        raise Coalescer::Error, "must be a float"
       end
 
       register(Symbol) do |value, _opts|
-        x = value.to_s
-        raise Coalescer::Error, "Invalid symbol `#{x}`" if x.empty?
-
-        x.to_sym
+        case value
+        when Symbol
+          next value
+        when Numeric
+          value.to_s.to_sym
+        when String
+          raise Coalescer::Error, "must be a symbol" if value.empty?
+          value.to_sym
+        else
+          raise Coalescer::Error, "must be a symbol"
+        end
       end
 
       register(Time) do |value, _opts|
@@ -43,10 +50,10 @@ module Verse
         when String
           Time.parse(value)
         else
-          raise Coalescer::Error, "Invalid time `#{value}`"
+          raise Coalescer::Error, "must be a datetime"
         end
       rescue StandardError
-        raise Coalescer::Error, "Invalid time `#{value}`"
+        raise Coalescer::Error, "must be a datetime"
       end
 
       register(Date) do |value, _opts|
@@ -56,10 +63,10 @@ module Verse
         when String
           Date.parse(value)
         else
-          raise Coalescer::Error, "Invalid date `#{value}`"
+          raise Coalescer::Error, "must be a date"
         end
       rescue StandardError
-        raise Coalescer::Error, "Invalid date `#{value}`"
+        raise Coalescer::Error, "must be a date"
       end
 
       register(Hash) do |value, opts|
@@ -74,15 +81,23 @@ module Verse
             # open hash with validation on keys:
             error_builder = Verse::Schema::ErrorBuilder.new
 
-            output = value.inject({}) do |(k, _v), h|
-              field = Coalescer.transform(k, opts[:of], {})
+            output = value.inject({}) do |h, (k,v)|
+              begin
+                field = Coalescer.transform(v, opts[:of])
 
-              if field.is_a?(Result)
-                error_builder.combine(k, field.errors)
-                h[k] = field.value
+                if field.is_a?(Result)
+                  error_builder.combine(k, field.errors)
+                  h[k.to_sym] = field.value
+                else
+                  h[k.to_sym] = field
+                end
+
+                h
+              rescue Coalescer::Error => e
+                error_builder.add(k, e.message)
+                h
               end
-            rescue Coalescer::Error => e
-              error_builder.add(k, e.message)
+
             end
 
             Result.new(output, error_builder.errors)
@@ -91,10 +106,10 @@ module Verse
             next value
           end
         else
-          raise Coalescer::Error, "Invalid hash `#{value}`"
+          raise Coalescer::Error, "must be a hash"
         end
       rescue StandardError
-        raise Coalescer::Error, "Invalid hash `#{value}`"
+        raise Coalescer::Error, "must be a hash"
       end
 
       register(Array) do |value, opts|
@@ -126,14 +141,14 @@ module Verse
 
           Result.new(output, error_builder.errors)
         else
-          raise Coalescer::Error, "Invalid array `#{value}`"
+          raise Coalescer::Error, "must be a array"
         end
       end
 
       register(nil, NilClass) do |value, _opts|
         next nil if value.nil? || value == ""
 
-        raise Coalescer::Error, "Invalid `#{value}`"
+        raise Coalescer::Error, "must be nil"
       end
 
       register(TrueClass, true, false) do |value, _opts|
@@ -145,7 +160,7 @@ module Verse
         when Numeric
           value != 0
         else
-          raise Coalescer::Error, "Invalid boolean `#{value}`"
+          raise Coalescer::Error, "must be a boolean"
         end
       end
     end

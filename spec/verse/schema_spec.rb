@@ -481,6 +481,47 @@ RSpec.describe Verse::Schema do
       end
     end
 
+    context "RULE_IN" do
+      it "validates" do
+        result = Examples::RULE_IN.validate(
+          {
+            "provider" => "facebook"
+          }
+        )
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq(
+          {
+            provider: "facebook"
+          }
+        )
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::RULE_IN.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            provider: ["is required"]
+          }
+        )
+      end
+
+      it "fails on rules" do
+        result = Examples::RULE_IN.validate(
+          {
+            "provider" => "invalid"
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            provider: ["must be one of facebook, google"]
+          }
+        )
+      end
+    end
+
     context "HASH_WITH_BLOCK" do
       it "validates" do
         result = Examples::HASH_WITH_BLOCK.validate(
@@ -515,6 +556,47 @@ RSpec.describe Verse::Schema do
           }
         )
       end
+    end
+
+    context "DICTIONARY" do
+      it "validates" do
+        result = Examples::DICTIONARY.validate(
+          {
+            "dict" => {
+              "key1" => 1,
+              "key2" => "2"
+            }
+          }
+        )
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq(
+          {
+            dict: {
+              key1: 1,
+              key2: 2
+            }
+          }
+        )
+      end
+
+      it "fails if one key is invalid" do
+        result = Examples::DICTIONARY.validate(
+          {
+            "dict" => {
+              "key1" => 1,
+              "key2" => "invalid"
+            }
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            "dict.key2": ["must be an integer"]
+          }
+        )
+      end
+
     end
 
     context "EVENT_HASH" do

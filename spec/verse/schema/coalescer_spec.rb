@@ -40,6 +40,7 @@ RSpec.describe Verse::Schema::Coalescer do
         expect(subject.transform(1, Symbol)).to eq(:'1')
         expect(subject.transform(1.0, Symbol)).to eq(:'1.0')
         expect { subject.transform(nil, Symbol) }.to raise_error Verse::Schema::Coalescer::Error
+        expect { subject.transform("", Symbol) }.to raise_error Verse::Schema::Coalescer::Error
       end
     end
 

@@ -62,6 +62,10 @@ module Examples
     field(:content, [String, content_hash]).filled
   end
 
+  RULE_IN = Verse::Schema.define do
+    field(:provider, String).in?(%w[facebook google])
+  end
+
   OPEN_HASH = Verse::Schema.define do
     field(:name, String)
 
@@ -77,6 +81,9 @@ module Examples
     end
   end
 
+  DICTIONARY = Verse::Schema.define do
+    field(:dict, Hash, of: Integer)
+  end
 
   # Transformers setup
   Event = Struct.new(:type, :data, :created_at)
