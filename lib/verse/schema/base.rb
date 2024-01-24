@@ -72,9 +72,7 @@ module Verse
           end
         end
 
-        if error_builder.errors.empty?
-          output = @post_processors.call(output, nil, error_builder)
-        end
+        output = @post_processors.call(output, nil, error_builder) if error_builder.errors.empty?
 
         Result.new(output, error_builder.errors)
       end

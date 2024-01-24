@@ -10,7 +10,7 @@ module Verse
     require_relative "schema/coalescer"
     require_relative "schema/post_processor"
 
-    IDENTITY_PP = PostProcessor.new{ |value| value }
+    IDENTITY_PP = PostProcessor.new { |value| value }
 
     def define(&block)
       Base.new(&block)
@@ -22,7 +22,5 @@ module Verse
         value
       end
     end
-
   end
 end
-

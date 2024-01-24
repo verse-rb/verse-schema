@@ -71,5 +71,4 @@ module Examples
       field(:age, Integer).rule(MUST_BE_MAJOR)
     end
   end
-
 end

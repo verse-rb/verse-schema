@@ -77,9 +77,8 @@ module Verse
             error_builder.add(@name, "hash expected")
           end
         else
-          coalesced_value = (
+          coalesced_value =
             Coalescer.transform(value, @type, @opts)
-          )
 
           if coalesced_value.is_a?(Result)
             error_builder.combine(@name, coalesced_value.errors)
@@ -94,7 +93,6 @@ module Verse
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message)
       end
-
     end
   end
 end

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Verse
   module Schema
     class PostProcessor
@@ -32,12 +34,12 @@ module Verse
         error = proc do |message, override_key = nil|
           has_error = true
 
-          # note: I'm not a big fan of this concept of overriding,
+          # NOTE: I'm not a big fan of this concept of overriding,
           # keys at error call. This is a bit smelly in my opinion
           key = override_key || key
 
           if key.is_a?(Array)
-            key.each{ |k| error_builder.add(k, message) }
+            key.each { |k| error_builder.add(k, message) }
           else
             error_builder.add(key, message)
           end
