@@ -57,4 +57,10 @@ module Examples
     field(:content, [String, content_hash]).filled
   end
 
+  OPEN_HASH = Verse::Schema.define do
+    field(:name, String)
+
+    extra_fields
+  end
+
 end

@@ -34,8 +34,8 @@ module Verse
         field(field_name, type, **opts, &block).optional
       end
 
-      def openhash
-        @openhash = true
+      def extra_fields
+        @extra_fields = true
       end
 
       def validate(input, error_builder = nil)
@@ -60,6 +60,14 @@ module Verse
               fields.each do |f|
                 error_builder.add(f, rule.message)
               end
+            end
+          end
+        end
+
+        if @extra_fields
+          input.each do |key, value|
+            unless @fields.any? { |field| field.key.to_s == key.to_s }
+              output[key.to_sym] = value
             end
           end
         end

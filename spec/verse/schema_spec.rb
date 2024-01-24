@@ -311,5 +311,32 @@ RSpec.describe Verse::Schema do
         })
       end
     end
+
+    context "OPEN_HASH" do
+      it "validates" do
+        result = Examples::OPEN_HASH.validate({
+          "name" => "John Doe",
+          "age" => 30,
+          "unknown" => "value"
+        })
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq({
+          name: "John Doe",
+          age: 30,
+          unknown: "value"
+        })
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::OPEN_HASH.validate({
+          "age" => 21
+        })
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq({
+          name: ["is required"]
+        })
+      end
+    end
   end
 end
