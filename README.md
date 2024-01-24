@@ -21,10 +21,14 @@ Add this line to your application's Gemfile:
 ### Simple usage
 
 ```ruby
+  must_be_major = Verse::Schema.rule("must be 18 or older") do |value|
+    value >= 18
+  end
+
   # a simple schema with a rule
   schema = Verse::Schema.define do
     field(:name, String).label("Name").description("The name of the person").filled
-    field(:age, Integer).rule(MUST_BE_MAJOR)
+    field(:age, Integer).rule(must_be_major)
   end
 
   # validate data
