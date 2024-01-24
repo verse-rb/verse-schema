@@ -7,8 +7,13 @@ module Examples
 
   # simple schema with a rule
   SIMPLE_SCHEMA = Verse::Schema.define do
-    field(:name, String).label("Name").description("The name of the person")
+    field(:name, String).label("Name").description("The name of the person").filled
     field(:age, Integer).rule(MUST_BE_MAJOR)
+  end
+
+  FILLED_ONLY_SCHEMA = Verse::Schema.define do
+    # Use object for any type
+    field(:field, Object).filled
   end
 
   # optional field
@@ -71,4 +76,19 @@ module Examples
       field(:age, Integer).rule(MUST_BE_MAJOR)
     end
   end
+
+
+  # Transformers setup
+  Event = Struct.new(:type, :data, :created_at)
+
+  EVENT_HASH = Verse::Schema.define do
+    field(:type, String)
+    field(:data, Hash).transform{ |input| input.transform_keys(&:to_sym) }
+    field(:created_at, Time)
+
+    transform do |input|
+      Event.new(input[:type], input[:data], input[:created_at])
+    end
+  end
+
 end

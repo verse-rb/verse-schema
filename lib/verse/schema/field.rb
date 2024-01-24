@@ -66,6 +66,12 @@ module Verse
         self
       end
 
+      def transform(&block)
+        @post_processors.attach(
+          PostProcessor.new(&block)
+        )
+      end
+
       def apply(value, output, error_builder)
         if @type.is_a?(Base)
           if value.is_a?(Hash)

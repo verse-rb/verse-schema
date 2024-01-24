@@ -53,6 +53,90 @@ RSpec.describe Verse::Schema do
       end
     end
 
+    context "FILLED_ONLY_SCHEMA" do
+      it "validates" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate(
+          {
+            "field" => :some_value
+          }
+        )
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq(
+          {
+            field: :some_value
+          }
+        )
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            field: ["is required"]
+          }
+        )
+      end
+
+      it "fails on rules" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate(
+          {
+            "field" => nil
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            field: ["must be filled"]
+          }
+        )
+      end
+
+      it "fails on rules (empty string)" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate(
+          {
+            "field" => ""
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            field: ["must be filled"]
+          }
+        )
+      end
+
+      it "fails on rules (empty array)" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate(
+          {
+            "field" => []
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            field: ["must be filled"]
+          }
+        )
+      end
+
+      it "fails on rules (empty hash)" do
+        result = Examples::FILLED_ONLY_SCHEMA.validate(
+          {
+            "field" => {}
+          }
+        )
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            field: ["must be filled"]
+          }
+        )
+      end
+
+    end
+
     context "OPTIONAL_FIELD_SCHEMA" do
       it "validates" do
         result = Examples::OPTIONAL_FIELD_SCHEMA.validate(
@@ -428,6 +512,45 @@ RSpec.describe Verse::Schema do
           {
             type: ["is required"],
             data: ["is required"]
+          }
+        )
+      end
+    end
+
+    context "EVENT_HASH" do
+      it "validates" do
+        result = Examples::EVENT_HASH.validate(
+          {
+            "type" => "event",
+            "data" => {
+              "name" => "John Doe",
+              "age" => 30
+            },
+            "created_at" => "2011-10-05T14:48:00.000Z"
+          }
+        )
+        expect(result.errors).to eq({})
+        expect(result.fail?).to be(false)
+        expect(result.value).to eq(
+          Examples::Event.new(
+            "event",
+            {
+              name: "John Doe",
+              age: 30
+            },
+            Time.parse("2011-10-05T14:48:00.000Z")
+          )
+        )
+      end
+
+      it "fails with complete errors list" do
+        result = Examples::EVENT_HASH.validate({})
+        expect(result.success?).to be(false)
+        expect(result.errors).to eq(
+          {
+            type: ["is required"],
+            data: ["is required"],
+            created_at: ["is required"]
           }
         )
       end

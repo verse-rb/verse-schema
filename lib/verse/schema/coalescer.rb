@@ -17,7 +17,7 @@ module Verse
           end
         when Class
           proc do |value, _opts, _key, _error|
-            return value if value.is_a?(type)
+            next value if value.is_a?(type)
 
             raise Error, "Invalid cast to `#{type}` for `#{value}`"
           end
