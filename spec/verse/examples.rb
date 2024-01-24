@@ -64,7 +64,7 @@ module Examples
   end
 
   HASH_WITH_BLOCK = Verse::Schema.define do
-    field(:name, String)
+    field(:type, String)
 
     field(:data, Hash) do
       field(:name, String).filled
