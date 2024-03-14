@@ -25,7 +25,7 @@ module Verse
         @post_processors.attach(
           PostProcessor.new do |value, error|
             case block.arity
-            when 1
+            when 1, -1, -2 # -1/-2 are for dealing with &:method block.
               error.call(message, fields) unless block.call(value)
             when 2
               error.call(message, fields) unless block.call(value, error)
