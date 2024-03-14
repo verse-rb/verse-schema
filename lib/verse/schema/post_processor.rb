@@ -2,6 +2,8 @@
 
 module Verse
   module Schema
+    # Post type validation / coercion processor. Can act as semantic rule or
+    # as a transformer.
     class PostProcessor
       attr_reader :next, :opts
 

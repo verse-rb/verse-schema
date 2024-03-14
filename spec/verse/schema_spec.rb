@@ -134,7 +134,6 @@ RSpec.describe Verse::Schema do
           }
         )
       end
-
     end
 
     context "OPTIONAL_FIELD_SCHEMA" do
@@ -596,7 +595,6 @@ RSpec.describe Verse::Schema do
           }
         )
       end
-
     end
 
     context "EVENT_HASH" do
@@ -649,22 +647,21 @@ RSpec.describe Verse::Schema do
 
       expect(result.fail?).to be(false)
       expect(result.value).to eq({
-        type: "unknown",
-        ordered: false,
-        has_no_default: "yep"
-      })
+                                   type: "unknown",
+                                   ordered: false,
+                                   has_no_default: "yep"
+                                 })
     end
 
     it "requires disable default" do
       result = Examples::DEFAULT_VALUE.validate(
-        {
-        }
+        {}
       )
 
       expect(result.fail?).to be(true)
       expect(result.errors).to eq({
-        has_no_default: ["is required"]
-      })
+                                    has_no_default: ["is required"]
+                                  })
     end
 
     it "can still put value to default field" do
@@ -678,12 +675,11 @@ RSpec.describe Verse::Schema do
 
       expect(result.fail?).to be(false)
       expect(result.value).to eq({
-        type: "known",
-        ordered: true,
-        has_no_default: "uh"
-      })
+                                   type: "known",
+                                   ordered: true,
+                                   has_no_default: "uh"
+                                 })
     end
-
   end
 
   context "COMPLEX_EXAMPLE" do
@@ -741,5 +737,4 @@ RSpec.describe Verse::Schema do
       )
     end
   end
-
 end

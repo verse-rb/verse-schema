@@ -42,15 +42,14 @@ module Verse
 
             type.each do |t|
               converted = @mapping.fetch(t) do
-                  DEFAULT_MAPPER.call(t)
-                end.call(value, opts)
+                DEFAULT_MAPPER.call(t)
+              end.call(value, opts)
 
               if !converted.is_a?(Result) ||
-                (converted.is_a?(Result) && converted.success?)
+                 (converted.is_a?(Result) && converted.success?)
                 has_result = true
                 break
               end
-
             rescue StandardError
               # next
             end

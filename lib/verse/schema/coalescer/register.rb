@@ -37,6 +37,7 @@ module Verse
           value.to_s.to_sym
         when String
           raise Coalescer::Error, "must be a symbol" if value.empty?
+
           value.to_sym
         else
           raise Coalescer::Error, "must be a symbol"
@@ -70,7 +71,7 @@ module Verse
       end
 
       register(Hash) do |value, opts|
-        raise Coalescer::Error, "must be a hash" unless  value.is_a?(Hash)
+        raise Coalescer::Error, "must be a hash" unless value.is_a?(Hash)
 
         if opts[:block]
           opts[:block].validate(value)
@@ -80,23 +81,20 @@ module Verse
           # open hash with validation on keys:
           error_builder = Verse::Schema::ErrorBuilder.new
 
-          output = value.inject({}) do |h, (k,v)|
-            begin
-              field = Coalescer.transform(v, opts[:of])
+          output = value.inject({}) do |h, (k, v)|
+            field = Coalescer.transform(v, opts[:of])
 
-              if field.is_a?(Result)
-                error_builder.combine(k, field.errors)
-                h[k.to_sym] = field.value
-              else
-                h[k.to_sym] = field
-              end
-
-              h
-            rescue Coalescer::Error => e
-              error_builder.add(k, e.message)
-              h
+            if field.is_a?(Result)
+              error_builder.combine(k, field.errors)
+              h[k.to_sym] = field.value
+            else
+              h[k.to_sym] = field
             end
 
+            h
+          rescue Coalescer::Error => e
+            error_builder.add(k, e.message)
+            h
           end
 
           Result.new(output, error_builder.errors)

@@ -90,7 +90,7 @@ module Examples
 
   EVENT_HASH = Verse::Schema.define do
     field(:type, String)
-    field(:data, Hash).transform{ |input| input.transform_keys(&:to_sym) }
+    field(:data, Hash).transform { |input| input.transform_keys(&:to_sym) }
     field(:created_at, Time)
 
     transform do |input|
@@ -100,7 +100,7 @@ module Examples
 
   DEFAULT_VALUE = Verse::Schema.define do
     # block default
-    field(:type, String).default{ "unknown" }
+    field(:type, String).default { "unknown" }
     # param default
     field(:ordered, TrueClass).default(false)
     # reset default
@@ -109,7 +109,6 @@ module Examples
 
   # Complex example using almost everything:
   COMPLEX_EXAMPLE = Verse::Schema.define do
-
     facebook_event = define do
       field(:url, String).filled
 
@@ -144,5 +143,4 @@ module Examples
 
     field(:events, Array, of: event)
   end
-
 end

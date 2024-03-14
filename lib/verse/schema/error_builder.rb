@@ -17,10 +17,6 @@ module Verse
         )
       end
 
-      def combine(another_error_builder, _key)
-        another_error_builder
-      end
-
       def combine(key, errors)
         errors.each do |k, v|
           real_key = [@root, key, k].compact.join(".").to_sym
