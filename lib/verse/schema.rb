@@ -18,7 +18,15 @@ module Verse
 
     def rule(message, &block)
       PostProcessor.new do |value, error|
-        error.call(message) unless block.call(value, error)
+        case block.arity
+        when 1
+          error.call(message) unless block.call(value)
+        when 2
+          error.call(message) unless block.call(value, error)
+        else
+          raise ArgumentError, "invalid block arity"
+        end
+
         value
       end
     end

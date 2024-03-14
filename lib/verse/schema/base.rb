@@ -24,7 +24,15 @@ module Verse
       def rule(fields, message = "rule failed", &block)
         @post_processors.attach(
           PostProcessor.new do |value, error|
-            error.call(message, fields) unless block.call(value, error)
+            case block.arity
+            when 1
+              error.call(message, fields) unless block.call(value)
+            when 2
+              error.call(message, fields) unless block.call(value, error)
+            else
+              raise ArgumentError, "invalid block arity"
+            end
+
             value
           end
         )

@@ -72,7 +72,15 @@ module Verse
           case rule
           when String
             PostProcessor.new do |value, error|
-              error.call(rule) unless block.call(value, error)
+              case block.arity
+              when 1
+                error.call(rule) unless block.call(value)
+              when 2
+                error.call(rule) unless block.call(value, error)
+              else
+                raise ArgumentError, "invalid block arity"
+              end
+
               value
             end
           when PostProcessor
