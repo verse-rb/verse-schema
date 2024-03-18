@@ -24,9 +24,14 @@ module Verse
         end
       end
 
-      def add(key, message = "validation_failed")
-        real_key = [@root, key].compact.join(".").to_sym
-        (@errors[real_key] ||= []) << message
+      def add(keys, message = "validation_failed")
+        case keys
+        when Array
+          keys.each { |key| add(key, message) }
+        else
+          real_key = [@root, keys].compact.join(".").to_sym
+          (@errors[real_key] ||= []) << message
+        end
       end
     end
   end

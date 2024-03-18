@@ -7,7 +7,7 @@ module Examples
 
   # simple schema with a rule
   SIMPLE_SCHEMA = Verse::Schema.define do
-    field(:name, String).label("Name").description("The name of the person").filled
+    field(:name, String).meta(label: "Name", description: "The name of the person").filled
     field(:age, Integer).rule(MUST_BE_MAJOR)
   end
 
@@ -18,7 +18,7 @@ module Examples
 
   # optional field
   OPTIONAL_FIELD_SCHEMA = Verse::Schema.define do
-    field(:name, String).label("Name").description("The name of the person")
+    field(:name, String).meta(label: "Name", description: "The name of the person")
     field?(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
   end
 

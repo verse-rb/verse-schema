@@ -20,9 +20,9 @@ module Verse
       PostProcessor.new do |value, error|
         case block.arity
         when 1, -1, -2
-          error.call(message) unless block.call(value)
+          error.add(opts[:key], message) unless block.call(value)
         when 2
-          error.call(message) unless block.call(value, error)
+          error.add(opts[:key], message) unless block.call(value, error)
         else
           raise ArgumentError, "invalid block arity"
         end

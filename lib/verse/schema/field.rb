@@ -24,9 +24,7 @@ module Verse
         @opts[:block] = Schema.define(&block)
       end
 
-      option :label, default: -> { @name }
       option :key, default: -> { @name }
-      option :description, default: -> { nil }
       option :type
 
       def optional
@@ -113,12 +111,12 @@ module Verse
         rule_processor = \
           case rule
           when String
-            PostProcessor.new do |value, error|
+            PostProcessor.new(key: key) do |value, error|
               case block.arity
               when 1, -1, -2 # -1/-2 are for dealing with &:method block.
-                error.call(rule) unless block.call(value)
+                error.add(opts[:key], rule) unless block.call(value)
               when 2
-                error.call(rule) unless block.call(value, error)
+                error.add(opts[:key], rule) unless block.call(value, error)
               else
                 raise ArgumentError, "invalid block arity"
               end
@@ -126,6 +124,7 @@ module Verse
               value
             end
           when PostProcessor
+            rule.opts[:key] = key
             rule
           else
             raise ArgumentError, "invalid rule type #{rule}"

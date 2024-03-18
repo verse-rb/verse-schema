@@ -7,7 +7,7 @@ module Verse
     class PostProcessor
       attr_reader :next, :opts
 
-      def initialize(*opts, &block)
+      def initialize(**opts, &block)
         @opts = opts
         @block = block
       end
@@ -31,29 +31,11 @@ module Verse
       end
 
       def call(value, key, error_builder)
-        has_error = false
+        output = instance_exec(value, error_builder, @opts, &@block)
 
-        error = proc do |message, override_key = nil|
-          has_error = true
+        has_error = error_builder.errors.any?
 
-          # NOTE: I'm not a big fan of this concept of overriding,
-          # keys at error call. This is a bit smelly in my opinion
-          key = override_key || key
-
-          if key.is_a?(Array)
-            key.each { |k| error_builder.add(k, message) }
-          else
-            error_builder.add(key, message)
-          end
-        end
-
-        begin
-          output = @block.call(value, error, @opts)
-        rescue StandardError => e
-          error.call(e.message)
-        end
-
-        if !has_error && @next
+        if @next
           @next.call(output, key, error_builder)
         elsif has_error
           value

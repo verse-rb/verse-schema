@@ -202,7 +202,7 @@ RSpec.describe Verse::Schema do
         expect(result.errors).to eq({ data: ["is required"] })
       end
 
-      it "show proper keys on failure" do
+      it "shows proper keys on failure" do
         result = Examples::NESTED_SCHEMA.validate(
           {
             "data" => {
