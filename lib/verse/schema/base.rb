@@ -43,8 +43,13 @@ module Verse
       end
 
       def transform(&block)
+        callback = proc do |value, error_builder|
+          next value if error_builder.errors.any?
+          block.call(value, error_builder)
+        end
+
         @post_processors.attach(
-          PostProcessor.new(&block)
+          PostProcessor.new(&callback)
         )
       end
 
