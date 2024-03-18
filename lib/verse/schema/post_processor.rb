@@ -5,6 +5,8 @@ module Verse
     # Post type validation / coercion processor. Can act as semantic rule or
     # as a transformer.
     class PostProcessor
+      EndOfChain = RuntimeError.new("End of chain")
+
       attr_reader :next, :opts
 
       def initialize(**opts, &block)
@@ -20,6 +22,10 @@ module Verse
         end
       end
 
+      def stop
+        raise EndOfChain
+      end
+
       def dup
         PostProcessor.new(&@block).tap do |new_pp|
           new_pp.attach(@next.dup) if @next
@@ -31,7 +37,11 @@ module Verse
       end
 
       def call(value, key, error_builder)
-        output = instance_exec(value, error_builder, @opts, &@block)
+        begin
+          output = instance_exec(value, error_builder, @opts, &@block)
+        rescue EndOfChain
+          return value
+        end
 
         has_error = error_builder.errors.any?
 

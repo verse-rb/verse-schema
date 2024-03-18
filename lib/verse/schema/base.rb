@@ -44,7 +44,7 @@ module Verse
 
       def transform(&block)
         callback = proc do |value, error_builder|
-          next value if error_builder.errors.any?
+          stop if error_builder.errors.any?
           block.call(value, error_builder)
         end
 
