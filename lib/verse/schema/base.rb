@@ -21,7 +21,7 @@ module Verse
         @post_processors = another_schema.post_processors
       end
 
-      def rule(fields, message = "rule failed", &block)
+      def rule(fields = nil, message = "rule failed", &block)
         @post_processors.attach(
           PostProcessor.new do |value, error|
             case block.arity

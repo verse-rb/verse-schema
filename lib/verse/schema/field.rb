@@ -111,7 +111,7 @@ module Verse
         rule_processor = \
           case rule
           when String
-            PostProcessor.new(key: key) do |value, error|
+            PostProcessor.new(key:) do |value, error|
               case block.arity
               when 1, -1, -2 # -1/-2 are for dealing with &:method block.
                 error.add(opts[:key], rule) unless block.call(value)
