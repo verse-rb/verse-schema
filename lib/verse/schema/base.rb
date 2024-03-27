@@ -72,7 +72,16 @@ module Verse
       end
 
       def validate(input, error_builder = nil)
-        error_builder ||= ErrorBuilder.new
+
+        error_builder = \
+          case error_builder
+          when String
+            ErrorBuilder.new(error_builder)
+          when ErrorBuilder
+            error_builder
+          else
+            ErrorBuilder.new
+          end
 
         output = {}
 
