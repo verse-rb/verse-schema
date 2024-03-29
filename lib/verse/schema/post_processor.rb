@@ -5,7 +5,7 @@ module Verse
     # Post type validation / coercion processor. Can act as semantic rule or
     # as a transformer.
     class PostProcessor
-      EndOfChain = RuntimeError.new("End of chain")
+      EndOfChain = Class.new(RuntimeError)
 
       attr_reader :next, :opts
 
