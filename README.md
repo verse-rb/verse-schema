@@ -32,7 +32,7 @@ Add this line to your application's Gemfile:
   end
 
   # validate data
-  result = schema.validate(name: "John", age: 18)
+  result = schema.validate({name: "John", age: 18})
 
   if result.success?
     puts "Valid data: #{result.value}"
@@ -64,7 +64,7 @@ Note that if a key is found but set at nil, the schema will be invalid:
     field?(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
   end
 
-  schema.validate(name: "John", age: nil).success? # => false
+  schema.validate({name: "John", age: nil}).success? # => false
 ```
 
 To make it valid, you can define the field as union of `Integer` and `NilClass`:
@@ -76,7 +76,7 @@ To make it valid, you can define the field as union of `Integer` and `NilClass`:
     field(:age, [Integer, NilClass]).rule("must be 18 or older") { |age| next true if age.nil?; age>=18 }
   end
 
-  schema.validate(name: "John", age: nil).success? # => true
+  schema.validate({name: "John", age: nil}).success? # => true
 ```
 
 Note also the change in the rule, as the age can be `nil`, we need to handle it.
@@ -171,6 +171,33 @@ Same as Hash, use `of` option to validate each Array item:
   end
 ```
 
+This work with Schema too:
+
+
+```ruby
+  simple_schema = Verse::Schema.define do
+    field(:name, String).label("Name").description("The name of the person").filled
+    field(:age, Integer).rule(MUST_BE_MAJOR)
+  end
+
+  # array of simple schema
+  array_schema = Verse::Schema.define do
+    field(:data, Array, of: simple_schema)
+  end
+```
+
+Or you can pass a block:
+
+```ruby
+  # array of simple schema
+  array_schema = Verse::Schema.define do
+    field(:data, Array) do
+      field(:name, String).label("Name").description("The name of the person").filled
+      field(:age, Integer).rule(MUST_BE_MAJOR)
+    end
+  end
+```
+
 Please note that due to the coalescence process, the array will be coerced to the type defined in the schema:
 
 ```ruby
@@ -179,7 +206,7 @@ Please note that due to the coalescence process, the array will be coerced to th
     field(:data, Array, of: [Integer, String])
   end
 
-  array_schema.validate(data: [1, "2", "3"]).value # => [1, 2, 3]
+  array_schema.validate({data: [1, "2", "3"]}).value # => [1, 2, 3]
 ```
 
 Here everything become Integer as the first type in `of` option is Integer and coercion is applied.
@@ -200,7 +227,19 @@ Rules can be setup on fields as seen above. You can also define global rules tha
   end
 ```
 
-(Sorry for the Johns reading me!)
+### Locals variables
+
+Locals variables can be passed during the validation process:
+
+```ruby
+  schema = Verse::Schema.define do
+    field(:age, Integer).rule("must be greater than %{min_age}") { |age|
+      age > locals[:min_age]
+    }
+  end
+
+  schema.validate({age: 18}, locals: { min_age: 21 }).success? # => false
+```
 
 ### Custom types
 
@@ -221,7 +260,7 @@ Any other object type and the Coalescer will just check that the entry value is 
   field(:name, Object) # Aka. any object
 ```
 
-You can register your own type:
+You can register your own converter type:
 
 ```ruby
   Verse::Schema::Coalescer.register(Email) do |value, opts|
@@ -231,7 +270,8 @@ You can register your own type:
     when String
       Email.valid?(value) && (next Email.new(value))
     end
-    raise Verse::Schema::Coalescer::Error, "invalid email"
+
+    raise Verse::Schema::Coalescer::Error, "invalid email: #{value}"
   end
 ```
 
