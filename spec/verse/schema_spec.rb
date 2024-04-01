@@ -684,7 +684,7 @@ RSpec.describe Verse::Schema do
 
   context "COMPLEX_EXAMPLE" do
     it "validates" do
-      result = Examples::COMPLEX_EXAMPLE.validate(
+      result = Examples::COMPLEX_EXAMPLE.validate({
         "events" => [{
           "at" => "2011-10-05T14:48:00.000Z",
           "type" => "created",
@@ -696,7 +696,7 @@ RSpec.describe Verse::Schema do
           },
           "source" => "facebook"
         }]
-      )
+      })
       expect(result.errors).to eq({})
       expect(result.fail?).to be(false)
       expect(result.value).to eq(
@@ -716,7 +716,7 @@ RSpec.describe Verse::Schema do
 
     it "fails if wrong event structure" do
       # rule says that google event requires search
-      result = Examples::COMPLEX_EXAMPLE.validate(
+      result = Examples::COMPLEX_EXAMPLE.validate({
         "events" => [{
           "at" => "2011-10-05T14:48:00.000Z",
           "type" => "created",
@@ -728,11 +728,44 @@ RSpec.describe Verse::Schema do
           },
           "source" => "facebook"
         }]
-      )
+      })
       expect(result.success?).to be(false)
       expect(result.errors).to eq(
         {
           "events.0.data": ["invalid event data structure"]
+        }
+      )
+    end
+  end
+
+  context "WITH_LOCALS" do
+    it "validates" do
+      result = Examples::WITH_LOCALS.validate(
+        {
+          "age" => 30
+        },
+        locals: { min_age: 18 }
+      )
+      expect(result.errors).to eq({})
+      expect(result.fail?).to be(false)
+      expect(result.value).to eq(
+        age: 30
+      )
+    end
+
+    it "fails if age is too low" do
+      result = Examples::WITH_LOCALS.validate(
+        {
+          "age" => 17
+        },
+        locals: {
+          min_age: 30
+        }
+      )
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          age: ["must be greater than 30"]
         }
       )
     end

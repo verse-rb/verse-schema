@@ -7,7 +7,7 @@ module Verse
     class PostProcessor
       EndOfChain = Class.new(RuntimeError)
 
-      attr_reader :next, :opts
+      attr_reader :next, :opts, :locals
 
       def initialize(**opts, &block)
         @opts = opts
@@ -36,9 +36,10 @@ module Verse
         attach(PostProcessor.new(&block))
       end
 
-      def call(value, key, error_builder)
+      def call(value, key, error_builder, **locals)
         begin
-          output = instance_exec(value, error_builder, @opts, &@block)
+          @locals = locals
+          output = instance_exec(value, error_builder, @opts, @locals, &@block)
         rescue EndOfChain
           return value
         end
@@ -46,7 +47,7 @@ module Verse
         has_error = error_builder.errors.any?
 
         if @next
-          @next.call(output, key, error_builder)
+          @next.call(output, key, error_builder, **locals)
         elsif has_error
           value
         else

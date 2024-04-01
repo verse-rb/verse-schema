@@ -114,9 +114,9 @@ module Verse
             PostProcessor.new(key:) do |value, error|
               case block.arity
               when 1, -1, -2 # -1/-2 are for dealing with &:method block.
-                error.add(opts[:key], rule) unless block.call(value)
+                error.add(opts[:key], rule, **locals) unless instance_exec(value, &block)
               when 2
-                error.add(opts[:key], rule) unless block.call(value, error)
+                error.add(opts[:key], rule, **locals) unless instance_exec(value, error, &block)
               else
                 raise ArgumentError, "invalid block arity"
               end
@@ -153,11 +153,11 @@ module Verse
       end
 
       # :nodoc:
-      def apply(value, output, error_builder)
+      def apply(value, output, error_builder, locals)
         if @type.is_a?(Base)
           if value.is_a?(Hash)
             error_builder.context(@name) do |error_builder|
-              result = @type.validate(value, error_builder)
+              result = @type.validate(value, error_builder:, locals:)
               output[@name] = result.value
             end
           else
@@ -173,12 +173,12 @@ module Verse
           end
 
           output[@name] = @post_processors.call(
-            coalesced_value, @name, error_builder
+            coalesced_value, @name, error_builder, **locals
           )
 
         end
       rescue Coalescer::Error => e
-        error_builder.add(@name, e.message)
+        error_builder.add(@name, e.message, **locals)
       end
     end
   end

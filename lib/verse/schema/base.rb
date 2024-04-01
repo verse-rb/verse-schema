@@ -71,7 +71,9 @@ module Verse
         validate(input).success?
       end
 
-      def validate(input, error_builder = nil)
+      def validate(input, error_builder: nil, locals: {})
+
+        locals = locals.dup # Ensure they are not modified
 
         error_builder = \
           case error_builder
@@ -90,9 +92,9 @@ module Verse
 
           if exists
             value = input[field.key.to_s] || input[field.key.to_sym]
-            field.apply(value, output, error_builder)
+            field.apply(value, output, error_builder, locals)
           elsif field.default?
-            field.apply(field.default, output, error_builder)
+            field.apply(field.default, output, error_builder, locals)
           elsif field.required?
             error_builder.add(field.key, "is required")
           end
@@ -104,7 +106,7 @@ module Verse
           end
         end
 
-        output = @post_processors.call(output, nil, error_builder) if error_builder.errors.empty?
+        output = @post_processors.call(output, nil, error_builder, **locals) if error_builder.errors.empty?
 
         Result.new(output, error_builder.errors)
       end

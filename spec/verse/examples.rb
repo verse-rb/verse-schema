@@ -107,6 +107,12 @@ module Examples
     field(:has_no_default, String).default("def").required # required after default remove defaut value
   end
 
+  WITH_LOCALS = Verse::Schema.define do
+    field(:age, Integer).rule("must be greater than %{min_age}") { |age|
+      age > locals[:min_age]
+    }
+  end
+
   # Complex example using almost everything:
   COMPLEX_EXAMPLE = Verse::Schema.define do
     facebook_event = define do
