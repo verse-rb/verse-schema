@@ -72,7 +72,6 @@ module Verse
       end
 
       def validate(input, error_builder: nil, locals: {})
-
         locals = locals.dup # Ensure they are not modified
 
         error_builder = \
@@ -91,7 +90,7 @@ module Verse
           exists = input.key?(field.key.to_s) || input.key?(field.key.to_sym)
 
           if exists
-            value = input[field.key.to_s] || input[field.key.to_sym]
+            value = input.fetch(field.key.to_s, input[field.key.to_sym])
             field.apply(value, output, error_builder, locals)
           elsif field.default?
             field.apply(field.default, output, error_builder, locals)
