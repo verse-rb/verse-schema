@@ -451,6 +451,29 @@ RSpec.describe Verse::Schema do
           }
         )
       end
+
+      it "validates (custom classes)" do
+        result = Examples::MULTIPLE_TYPES_FIELD2.validate(
+          {
+            a_or_b: Examples::A.new("a"),
+          }
+        )
+        expect(result.fail?).to be(false)
+
+        result = Examples::MULTIPLE_TYPES_FIELD2.validate(
+          {
+            a_or_b: Examples::B.new("b"),
+          }
+        )
+        expect(result.fail?).to be(false)
+
+        result = Examples::MULTIPLE_TYPES_FIELD2.validate(
+          {
+            a_or_b: "not a class"
+          }
+        )
+        expect(result.success?).to be(false)
+      end
     end
 
     context "OPEN_HASH" do
@@ -734,6 +757,21 @@ RSpec.describe Verse::Schema do
         {
           "events.0.data": ["invalid event data structure"]
         }
+      )
+    end
+  end
+
+  context "DATE_TIME" do
+    it "validates" do
+      result = Examples::DATE_TIME.validate(
+        {
+          "created_at" => "2011-10-05"
+        }
+      )
+      expect(result.errors).to eq({})
+      expect(result.fail?).to be(false)
+      expect(result.value).to eq(
+        created_at: Date.parse("2011-10-05")
       )
     end
   end

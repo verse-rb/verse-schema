@@ -7,7 +7,7 @@ module Verse
         rule(message) do |value, _output|
           if value.respond_to?(:empty?)
             !value.empty?
-          elsif !value
+          elsif value.nil?
             false
           else
             true

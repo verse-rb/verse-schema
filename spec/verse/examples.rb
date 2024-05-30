@@ -1,6 +1,19 @@
 # frozen_string_literal: true
 
 module Examples
+
+  class A
+    def initialize(content)
+      @content = content
+    end
+  end
+
+  class B
+    def initialize(content)
+      @content = content
+    end
+  end
+
   MUST_BE_MAJOR = Verse::Schema.rule("must be 18 or older") do |value|
     value >= 18
   end
@@ -62,6 +75,10 @@ module Examples
     field(:content, [String, content_hash]).filled
   end
 
+  MULTIPLE_TYPES_FIELD2 = Verse::Schema.define do
+    field :a_or_b, [A, B]
+  end
+
   RULE_IN = Verse::Schema.define do
     field(:provider, String).in?(%w[facebook google])
   end
@@ -111,6 +128,10 @@ module Examples
     field(:age, Integer).rule("must be greater than %{min_age}") { |age|
       age > locals[:min_age]
     }
+  end
+
+  DATE_TIME = Verse::Schema.define do
+    field(:created_at, Date)
   end
 
   # Complex example using almost everything:
