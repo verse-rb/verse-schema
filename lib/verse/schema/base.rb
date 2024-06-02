@@ -4,6 +4,7 @@ require_relative "./field"
 require_relative "./result"
 require_relative "./error_builder"
 require_relative "./post_processor"
+require_relative "./invalid_schema_error"
 
 module Verse
   module Schema
@@ -109,6 +110,39 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
+
+      # Represent a dataclass using schema internally
+      def dataclass
+        schema = self
+
+        @dataclass ||= Data.define(
+          *fields.map(&:name)
+        ) do
+          define_method(:initialize) do |**hash|
+            result = schema.validate(hash)
+
+            unless result.success?
+              raise InvalidSchemaError, result.errors
+            end
+
+            value = result.value
+
+            schema.fields.each do |f|
+              data = value[f.name]
+
+              next unless data
+
+              if f.type.is_a?(Verse::Schema::Base)
+                value[f.name] = f.type.dataclass.new(**data)
+              end
+            end
+
+            super(**value)
+          end
+
+        end
+      end
+
     end
   end
 end
