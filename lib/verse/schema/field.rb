@@ -114,11 +114,15 @@ module Verse
         end
       end
 
+      # Check if the field has a default value
+      # @return [Boolean] true if the field has a default value
       def default?
         !!@has_default
       end
 
-      # Mark the field as required
+      # Mark the field as required. This will make the field mandatory.
+      # Remove any default value.
+      # @return [self]
       def required
         @opts[:optional] = false
         @has_default = false
@@ -126,12 +130,16 @@ module Verse
         self
       end
 
+      # Check if the field is required
+      # @return [Boolean] true if the field is required
       def required?
         !@opts[:optional]
       end
 
+      # Check if the field is optional
+      # @return [Boolean] true if the field is optional
       def optional?
-        !required?
+        !!@opts[:optional]
       end
 
       # Add a rule to the field. A rule is a block that will be called
@@ -178,6 +186,9 @@ module Verse
       #
       # If the block raises an error, the error will be added to the error
       # builder.
+      #
+      # @param [Proc] block the block to call to transform the value
+      # @return [self]
       def transform(&block)
         callback = proc do |value, error_builder|
           stop if error_builder.errors.any?
@@ -187,8 +198,11 @@ module Verse
         @post_processors.attach(
           PostProcessor.new(&callback)
         )
+
+        self
       end
 
+      # Check whether the field is matching the condition of the parent field.
       def inherit?(parent_field)
         case @type
         when Array
@@ -203,7 +217,7 @@ module Verse
             @type == Hash &&
               (
                 !@opts[:schema] ||
-                @opts[:schema] < parent_field.opts[:schema]
+                @opts[:schema] <= parent_field.opts[:schema]
               )
           elsif parent_field.opts[:of]
             # Open array / dictionary OR the type of `of` inherit of

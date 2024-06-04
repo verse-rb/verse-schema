@@ -196,32 +196,34 @@ RSpec.describe Verse::Schema do
         )
       end
 
-      context "dataclass" do
-        it "can use dataclass" do
-          klass = Examples::NESTED_SCHEMA.dataclass
+      if RUBY_VERSION >= "3.2.0"
+        context "dataclass" do
+          it "can use dataclass" do
+            klass = Examples::NESTED_SCHEMA.dataclass
 
-          data = klass.new(
-            data: {
-              name: "John Doe",
-              age: 30
-            }
-          )
-
-          expect(data.data.name).to eq("John Doe")
-          expect(data.data.age).to eq(30)
-        end
-
-        it "raises error if invalid" do
-          klass = Examples::NESTED_SCHEMA.dataclass
-
-          expect {
-            klass.new(
+            data = klass.new(
               data: {
                 name: "John Doe",
-                age: 17
+                age: 30
               }
             )
-          }.to raise_error(Verse::Schema::InvalidSchemaError)
+
+            expect(data.data.name).to eq("John Doe")
+            expect(data.data.age).to eq(30)
+          end
+
+          it "raises error if invalid" do
+            klass = Examples::NESTED_SCHEMA.dataclass
+
+            expect {
+              klass.new(
+                data: {
+                  name: "John Doe",
+                  age: 17
+                }
+              )
+            }.to raise_error(Verse::Schema::InvalidSchemaError)
+          end
         end
       end
 
@@ -925,7 +927,7 @@ RSpec.describe Verse::Schema do
       result = schema_aggregate.validate(
         {
           age: 21,
-          content: {custom: true}
+          content: { custom: true }
         }
       )
 
@@ -933,7 +935,7 @@ RSpec.describe Verse::Schema do
       expect(result.value).to eq(
         {
           age: 21,
-          content: {custom: true}
+          content: { custom: true }
         }
       )
     end
@@ -975,6 +977,5 @@ RSpec.describe Verse::Schema do
         }
       )
     end
-
   end
 end

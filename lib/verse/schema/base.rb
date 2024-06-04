@@ -17,11 +17,6 @@ module Verse
         instance_eval(&block) if block_given?
       end
 
-      def extend(another_schema)
-        @fields += another_schema.fields
-        @post_processors = another_schema.post_processors
-      end
-
       def rule(fields = nil, message = "rule failed", &block)
         @post_processors.attach(
           PostProcessor.new do |value, error|
@@ -136,6 +131,10 @@ module Verse
 
       alias_method :<, :inherit?
 
+      def <=(other)
+        other == self || inherit?(other)
+      end
+
       # Aggregation of two schemas.
       def +(other)
         raise ArgumentError, "aggregate must be a schema" unless other.is_a?(Base)
@@ -171,39 +170,42 @@ module Verse
         new_schema
       end
 
-      # Represent a dataclass using schema internally
-      def dataclass
-        schema = self
+      # Need data structure
+      if RUBY_VERSION >= "3.2.0"
+        # Represent a dataclass using schema internally
+        def dataclass
+          schema = self
 
-        @dataclass ||= Data.define(
-          *fields.map(&:name)
-        ) do
-          define_method(:initialize) do |**hash|
-            result = schema.validate(hash)
+          @dataclass ||= Data.define(
+            *fields.map(&:name)
+          ) do
+            define_method(:initialize) do |**hash|
+              result = schema.validate(hash)
 
-            unless result.success?
-              raise InvalidSchemaError, result.errors
-            end
+              unless result.success?
+                raise InvalidSchemaError, result.errors
+              end
 
-            value = result.value
+              value = result.value
 
-            schema.fields.each do |f|
-              data = value[f.name]
+              schema.fields.each do |f|
+                data = value[f.name]
 
-              next unless data
+                next unless data
 
-              if f.opts[:schema]
-                value[f.name] = f.opts[:schema].dataclass.new(**data)
-              elsif f.opts[:of]
-                if f.type == Array
-                  value[f.name] = data.map{ |x| f.type.dataclass.new(**x) }
-                elsif f.type == Hash
-                  value[f.name] = data.transform_values{ |v| f.type.dataclass.new(**v) }
+                if f.opts[:schema]
+                  value[f.name] = f.opts[:schema].dataclass.new(**data)
+                elsif f.opts[:of]
+                  if f.type == Array
+                    value[f.name] = data.map{ |x| f.type.dataclass.new(**x) }
+                  elsif f.type == Hash
+                    value[f.name] = data.transform_values{ |v| f.type.dataclass.new(**v) }
+                  end
                 end
               end
-            end
 
-            super(**value)
+              super(**value)
+            end
           end
         end
       end
