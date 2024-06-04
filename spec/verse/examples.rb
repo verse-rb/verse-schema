@@ -1,7 +1,6 @@
 # frozen_string_literal: true
 
 module Examples
-
   class A
     def initialize(content)
       @content = content
@@ -125,7 +124,7 @@ module Examples
   end
 
   WITH_LOCALS = Verse::Schema.define do
-    field(:age, Integer).rule("must be greater than %{min_age}") { |age|
+    field(:age, Integer).rule("must be greater than %<min_age>s") { |age|
       age > locals[:min_age]
     }
   end
@@ -169,5 +168,45 @@ module Examples
     end
 
     field(:events, Array, of: event)
+  end
+
+  INHERITANCE = Verse::Schema.define do
+    parent = define do
+      field(:type, Symbol)
+      field(:id, Integer)
+
+      rule(:type, "should be filled"){ |x| x[:type].to_s != "" }
+    end
+
+    child_a = define(parent) do
+      rule(:type, "must start by x"){ |x| x[:type].to_s =~ /^x/ }
+      field(:data, Hash) do
+        field(:x, Float)
+        field(:y, Float)
+      end
+    end
+
+    child_b = define(parent) do
+      rule(:type, "must start by y"){ |x| x[:type].to_s =~ /^y/ }
+      field(:data, Hash) do
+        field(:content, String)
+      end
+    end
+
+    define_singleton_method(:parent){ parent }
+    define_singleton_method(:child_a){ child_a }
+    define_singleton_method(:child_b){ child_b }
+
+    field(:content, [child_b, child_a])
+  end
+
+  AGGREGATION_IS_MAJOR = Verse::Schema.define do
+    field(:age, Integer).rule("must be major"){ |age|
+      age >= 18
+    }
+  end
+
+  AGGREGATION_HAS_CONTENT = Verse::Schema.define do
+    field(:content, [String, Hash])
   end
 end

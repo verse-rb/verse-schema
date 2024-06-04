@@ -12,8 +12,8 @@ module Verse
 
     IDENTITY_PP = PostProcessor.new { |value| value }
 
-    def define(&block)
-      Base.new(&block)
+    def define(from = nil, &block)
+      Verse::Schema::Base.define(from, &block)
     end
 
     def rule(message, &block)

@@ -31,7 +31,7 @@ module Verse
         else
           real_key = [@root, keys].compact.join(".").to_sym
 
-          message = message % locals if locals.any?
+          message %= locals if locals.any?
 
           (@errors[real_key] ||= []) << message
         end

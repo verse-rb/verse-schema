@@ -10,18 +10,46 @@ module Verse
     class Field
       include Optionable
 
-      attr_reader :name, :type
+      attr_reader :name, :type, :opts, :post_processors
 
-      def initialize(name, type, opts, &block)
+      def initialize(name, type, opts, post_processors: IDENTITY_PP.dup, &block)
         @name = name
-        @type = type
         @opts = opts
         # Setup identity processor
-        @post_processors = IDENTITY_PP.dup
+        @post_processors = post_processors
 
-        return unless block_given?
+        if type.is_a?(Schema::Base)
+          @type = Hash
+          @opts[:schema] = type
+        else
+          @type = type
+        end
 
-        @opts[:block] = Schema.define(&block)
+        if block_given?
+          if @opts[:of]
+            raise ArgumentError, "cannot pass `of` and a block at the same time"
+          end
+
+          if @opts[:schema]
+            raise ArgumentError, "cannot pass `schema` and a block at the same time"
+          end
+
+          if [Hash, Object].include?(type)
+            @type = Hash
+            @opts[:schema] = Schema.define(&block)
+          elsif type == Array
+            @opts[:of] = Schema.define(&block)
+          end
+        end
+
+        return if [Hash, Array].include?(@type)
+        if @opts[:of]
+          raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
+        end
+
+        return unless @opts[:schema]
+
+        raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
       end
 
       option :key, default: -> { @name }
@@ -31,6 +59,15 @@ module Verse
         @opts[:optional] = true
 
         self
+      end
+
+      def dup
+        Field.new(
+          @name,
+          @type,
+          @opts.dup,
+          post_processors: @post_processors.dup
+        )
       end
 
       # Add metadata to the field. Useful for documentation
@@ -151,6 +188,34 @@ module Verse
           PostProcessor.new(&callback)
         )
       end
+
+      def inherit?(parent_field)
+        case @type
+        when Array
+          # @type must be a superset of parent.
+          # not easy to do, FIXME
+          raise NotImplementedError, "inheritance check with multiple type field not supported yet."
+        else
+          # wrong type
+          return false unless @type <= parent_field.type
+
+          if parent_field.opts[:schema]
+            @type == Hash &&
+              (
+                !@opts[:schema] ||
+                @opts[:schema] < parent_field.opts[:schema]
+              )
+          elsif parent_field.opts[:of]
+            # Open array / dictionary OR the type of `of` inherit of
+            # the parent.
+            !@opts[:of] || @opts[:of] < parent_field.opts[:of]
+          else
+            true
+          end
+        end
+      end
+
+      alias_method :<, :inherit?
 
       # :nodoc:
       def apply(value, output, error_builder, locals)

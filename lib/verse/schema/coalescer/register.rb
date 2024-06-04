@@ -73,10 +73,8 @@ module Verse
       register(Hash) do |value, opts|
         raise Coalescer::Error, "must be a hash" unless value.is_a?(Hash)
 
-        if opts[:block]
-          opts[:block].validate(value)
-        elsif opts[:as]
-          opts[:as].validate(value)
+        if opts[:schema]
+          opts[:schema].validate(value)
         elsif opts[:of]
           # open hash with validation on keys:
           error_builder = Verse::Schema::ErrorBuilder.new
@@ -107,17 +105,14 @@ module Verse
       register(Array) do |value, opts|
         case value
         when Array
-
-          schema = opts[:block] || opts[:of]
-
-          if schema.nil?
+          if opts[:of].nil?
             next value # open array.
           end
 
           error_builder = Verse::Schema::ErrorBuilder.new
 
           output = value.map.with_index do |v, idx|
-            field = Coalescer.transform(v, schema, {})
+            field = Coalescer.transform(v, opts[:of], {})
 
             if field.is_a?(Result)
               error_builder.combine(idx, field.errors)

@@ -1,3 +1,5 @@
+# frozen_string_literal: true
+
 module Verse
   module Schema
     class InvalidSchemaError < StandardError
@@ -6,12 +8,11 @@ module Verse
       def initialize(errors)
         @errors = errors
 
-        errors = errors.map{|k, v|   "#{k}: #{v}" }.join("\n")
+        errors = errors.map{ |k, v| "#{k}: #{v}" }.join("\n")
         message = "Invalid schema:\n#{errors}"
 
         super(message)
       end
-
     end
   end
 end
