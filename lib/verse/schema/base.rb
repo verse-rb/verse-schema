@@ -215,7 +215,7 @@ module Verse
                   if data.is_a?(Hash)
                     value[f.name] = f.opts[:schema].dataclass.from_raw(data)
                   end
-                elsif f.opts[:of]
+                elsif f.opts[:of] && f.opts[:of].is_a?(Base)
                   if f.type == Array
                     value[f.name] = data.map do |x|
                       if x.is_a?(Hash)
@@ -227,7 +227,7 @@ module Verse
                   elsif f.type == Hash
                     value[f.name] = data.transform_values do |v|
                       if v.is_a?(Hash)
-                        f.opts[:of].dataclass.new(v)
+                        f.opts[:of].dataclass.from_raw(v)
                       else
                         v
                       end
