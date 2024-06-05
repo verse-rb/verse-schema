@@ -192,6 +192,9 @@ module Verse
             previous_method = singleton_method(:new)
 
             define_singleton_method(:from_raw) do |hash|
+              # Set optional unset fields to `nil`
+              (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
+
               previous_method.call(**hash)
             end
 
