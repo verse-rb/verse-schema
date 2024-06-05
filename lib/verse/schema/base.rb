@@ -183,7 +183,7 @@ module Verse
       # Need data structure
       if RUBY_VERSION >= "3.2.0"
         # Represent a dataclass using schema internally
-        def dataclass
+        def dataclass(&block)
           schema = self
 
           @dataclass ||= Data.define(
@@ -252,6 +252,7 @@ module Verse
               previous_method.call(**value)
             end
 
+            instance_eval(&block) if block_given?
           end
         end
       end
