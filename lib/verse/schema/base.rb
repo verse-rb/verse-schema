@@ -212,12 +212,26 @@ module Verse
                 next unless data
 
                 if f.opts[:schema]
-                  value[f.name] = f.opts[:schema].dataclass.from_raw(data)
+                  if data.is_a?(Hash)
+                    value[f.name] = f.opts[:schema].dataclass.from_raw(data)
+                  end
                 elsif f.opts[:of]
                   if f.type == Array
-                    value[f.name] = data.map{ |x| f.opts[:of].dataclass.from_raw(x) }
+                    value[f.name] = data.map do |x|
+                      if x.is_a?(Hash)
+                        f.opts[:of].dataclass.from_raw(x)
+                      else
+                        x
+                      end
+                    end
                   elsif f.type == Hash
-                    value[f.name] = data.transform_values{ |v| f.opts[:of].dataclass.new(**v) }
+                    value[f.name] = data.transform_values do |v|
+                      if v.is_a?(Hash)
+                        f.opts[:of].dataclass.new(v)
+                      else
+                        v
+                      end
+                    end
                   end
                 end
               end
