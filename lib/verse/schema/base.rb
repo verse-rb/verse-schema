@@ -22,9 +22,9 @@ module Verse
           PostProcessor.new do |value, error|
             case block.arity
             when 1, -1, -2 # -1/-2 are for dealing with &:method block.
-              error.add(fields, message) unless block.call(value)
+              error.add(fields, message) unless instance_exec(value, &block)
             when 2
-              error.add(fields, message) unless block.call(value, error)
+              error.add(fields, message) unless instance_exec(value, error, &block)
             else
               raise ArgumentError, "invalid block arity"
             end
@@ -53,7 +53,7 @@ module Verse
       def transform(&block)
         callback = proc do |value, error_builder|
           stop if error_builder.errors.any?
-          block.call(value, error_builder)
+          instance_exec(value, error_builder, &block)
         end
 
         @post_processors.attach(
@@ -97,13 +97,23 @@ module Verse
         @fields.each do |field|
           exists = input.key?(field.key.to_s) || input.key?(field.key.to_sym)
 
-          if exists
-            value = input.fetch(field.key.to_s, input[field.key.to_sym])
-            field.apply(value, output, error_builder, locals)
-          elsif field.default?
-            field.apply(field.default, output, error_builder, locals)
-          elsif field.required?
-            error_builder.add(field.key, "is required")
+          locals[:__path__] ||= []
+          begin
+            locals[:__path__].push(field.key)
+
+            if exists
+              value = input.fetch(field.key.to_s, input[field.key.to_sym])
+
+              field.apply(value, output, error_builder, locals)
+            elsif field.default?
+              field.apply(field.default, output, error_builder, locals)
+            elsif field.required?
+              error_builder.add(field.key, "is required")
+            end
+          ensure
+            # This is more performant than creating new array everytime,
+            # but as in example, any storage of the array must be duplicated.
+            locals[:__path__].pop
           end
         end
 

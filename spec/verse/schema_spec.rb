@@ -980,4 +980,20 @@ RSpec.describe Verse::Schema do
       )
     end
   end
+
+  context "EXAMPLE_WITH_LOCALS_CLUE" do
+    it "validates" do
+      result = Examples::EXAMPLE_WITH_LOCALS_CLUE.validate(
+        {
+          content: {
+            x: 1
+          }
+        }
+      )
+
+      expect(result.success?).to be(true)
+      value = result.value
+      expect(value[:content][:path]).to eq([:content])
+    end
+  end
 end

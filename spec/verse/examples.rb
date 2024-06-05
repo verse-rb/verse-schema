@@ -209,4 +209,17 @@ module Examples
   AGGREGATION_HAS_CONTENT = Verse::Schema.define do
     field(:content, [String, Hash])
   end
+
+  EXAMPLE_WITH_LOCALS_CLUE = Verse::Schema.define do
+    subschema = define do
+      field(:x, Integer)
+
+      transform do |hash|
+        hash[:path] = locals[:__path__].dup
+        hash
+      end
+    end
+
+    field(:content, subschema)
+  end
 end

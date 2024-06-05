@@ -6,7 +6,7 @@ require "time"
 module Verse
   module Schema
     module Coalescer
-      register(String) do |value, _opts|
+      register(String) do |value|
         case value
         when String
           value
@@ -17,19 +17,19 @@ module Verse
         end
       end
 
-      register(Integer) do |value, _opts|
+      register(Integer) do |value|
         Integer(value)
       rescue TypeError, ArgumentError
         raise Coalescer::Error, "must be an integer"
       end
 
-      register(Float) do |value, _opts|
+      register(Float) do |value|
         Float(value)
       rescue TypeError, ArgumentError
         raise Coalescer::Error, "must be a float"
       end
 
-      register(Symbol) do |value, _opts|
+      register(Symbol) do |value|
         case value
         when Symbol
           next value
@@ -44,7 +44,7 @@ module Verse
         end
       end
 
-      register(Time) do |value, _opts|
+      register(Time) do |value|
         case value
         when Time
           value
@@ -57,7 +57,7 @@ module Verse
         raise Coalescer::Error, "must be a datetime"
       end
 
-      register(Date) do |value, _opts|
+      register(Date) do |value|
         case value
         when Date
           value
@@ -70,11 +70,11 @@ module Verse
         raise Coalescer::Error, "must be a date"
       end
 
-      register(Hash) do |value, opts|
+      register(Hash) do |value, opts, locals:|
         raise Coalescer::Error, "must be a hash" unless value.is_a?(Hash)
 
         if opts[:schema]
-          opts[:schema].validate(value)
+          opts[:schema].validate(value, locals:)
         elsif opts[:of]
           # open hash with validation on keys:
           error_builder = Verse::Schema::ErrorBuilder.new
@@ -130,13 +130,13 @@ module Verse
         end
       end
 
-      register(nil, NilClass) do |value, _opts|
+      register(nil, NilClass) do |value|
         next nil if value.nil? || value == ""
 
         raise Coalescer::Error, "must be nil"
       end
 
-      register(TrueClass, true, false) do |value, _opts|
+      register(TrueClass, true, false) do |value|
         case value
         when TrueClass, FalseClass
           value

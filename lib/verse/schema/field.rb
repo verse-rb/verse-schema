@@ -34,11 +34,13 @@ module Verse
             raise ArgumentError, "cannot pass `schema` and a block at the same time"
           end
 
-          if [Hash, Object].include?(type)
+          if [Hash, Object].include?(type) # Object when type is ommited.
             @type = Hash
             @opts[:schema] = Schema.define(&block)
           elsif type == Array
             @opts[:of] = Schema.define(&block)
+          else
+            raise ArgumentError, "block is only allowed with Hash or Array type"
           end
         end
 
@@ -244,7 +246,7 @@ module Verse
           end
         else
           coalesced_value =
-            Coalescer.transform(value, @type, @opts)
+            Coalescer.transform(value, @type, @opts, locals:)
 
           if coalesced_value.is_a?(Result)
             error_builder.combine(@name, coalesced_value.errors)

@@ -10,19 +10,19 @@ module Verse
       DEFAULT_MAPPER = lambda do |type|
         case type
         when Base
-          proc do |value, _opts|
+          proc do |value, opts, locals:|
             raise Error, "hash expected" unless value.is_a?(Hash)
 
-            type.validate(value)
+            type.validate(value, locals:)
           end
         when Class
-          proc do |value, _opts, _key, _error|
+          proc do |value|
             next value if value.is_a?(type)
 
             raise Error, "invalid cast to `#{type}` for `#{value}`"
           end
         else
-          proc do |value, _opts, _key, _error|
+          proc do |value|
             raise Error, "invalid cast to `#{type}` for `#{value}`"
           end
         end
@@ -35,7 +35,7 @@ module Verse
           end
         end
 
-        def transform(value, type, opts = {})
+        def transform(value, type, opts = {}, locals: {})
           if type.is_a?(Array)
             has_result = false
             converted = nil
@@ -43,7 +43,7 @@ module Verse
             type.each do |t|
               converted = @mapping.fetch(t) do
                 DEFAULT_MAPPER.call(t)
-              end.call(value, opts)
+              end.call(value, opts, locals:)
 
               if !converted.is_a?(Result) ||
                  (converted.is_a?(Result) && converted.success?)
@@ -60,7 +60,7 @@ module Verse
           else
             @mapping.fetch(type) do
               DEFAULT_MAPPER.call(type)
-            end.call(value, opts)
+            end.call(value, opts, locals:)
           end
         end
       end
