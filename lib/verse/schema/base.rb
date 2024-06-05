@@ -181,6 +181,10 @@ module Verse
           ) do
             previous_method = singleton_method(:new)
 
+            define_singleton_method(:from_raw) do |hash|
+              previous_method.call(**hash)
+            end
+
             define_singleton_method(:new) do |*args, **hash|
               if args.size > 1
                 raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
@@ -208,10 +212,10 @@ module Verse
                 next unless data
 
                 if f.opts[:schema]
-                  value[f.name] = f.opts[:schema].dataclass.new(data)
+                  value[f.name] = f.opts[:schema].dataclass.from_raw(data)
                 elsif f.opts[:of]
                   if f.type == Array
-                    value[f.name] = data.map{ |x| f.opts[:of].dataclass.new(**x) }
+                    value[f.name] = data.map{ |x| f.opts[:of].dataclass.from_raw(x) }
                   elsif f.type == Hash
                     value[f.name] = data.transform_values{ |v| f.opts[:of].dataclass.new(**v) }
                   end
