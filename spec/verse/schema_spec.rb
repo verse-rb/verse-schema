@@ -1018,10 +1018,10 @@ RSpec.describe Verse::Schema do
       result = Examples::EXAMPLE_WITH_LOCALS_CLUE_HASH.validate(
         {
           content: {
-            key1: {
+            "key1" => {
               x: 1
             },
-            key2: {
+            "key2" => {
               x: 2
             }
           }

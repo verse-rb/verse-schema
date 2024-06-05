@@ -82,15 +82,16 @@ module Verse
           output = value.inject({}) do |h, (k, v)|
             locals[:__path__] ||= []
             begin
+              k = k.to_sym
               locals[:__path__].push(k)
 
               field = Coalescer.transform(v, opts[:of], locals:)
 
               if field.is_a?(Result)
                 error_builder.combine(k, field.errors)
-                h[k.to_sym] = field.value
+                h[k] = field.value
               else
-                h[k.to_sym] = field
+                h[k] = field
               end
             ensure
               locals[:__path__].pop
