@@ -196,32 +196,34 @@ RSpec.describe Verse::Schema do
         )
       end
 
-      context "dataclass" do
-        it "can use dataclass" do
-          klass = Examples::NESTED_SCHEMA.dataclass
+      if RUBY_VERSION >= "3.2.0"
+        context "dataclass" do
+          it "can use dataclass" do
+            klass = Examples::NESTED_SCHEMA.dataclass
 
-          data = klass.new(
-            data: {
-              name: "John Doe",
-              age: 30
-            }
-          )
-
-          expect(data.data.name).to eq("John Doe")
-          expect(data.data.age).to eq(30)
-        end
-
-        it "raises error if invalid"  do
-          klass = Examples::NESTED_SCHEMA.dataclass
-
-          expect {
-            klass.new(
+            data = klass.new(
               data: {
                 name: "John Doe",
-                age: 17
+                age: 30
               }
             )
-          }.to raise_error(Verse::Schema::InvalidSchemaError)
+
+            expect(data.data.name).to eq("John Doe")
+            expect(data.data.age).to eq(30)
+          end
+
+          it "raises error if invalid" do
+            klass = Examples::NESTED_SCHEMA.dataclass
+
+            expect {
+              klass.new(
+                data: {
+                  name: "John Doe",
+                  age: 17
+                }
+              )
+            }.to raise_error(Verse::Schema::InvalidSchemaError)
+          end
         end
       end
 
@@ -325,9 +327,11 @@ RSpec.describe Verse::Schema do
           }
         )
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({
-                                      "data.1": ["hash expected"]
-                                    })
+        expect(result.errors).to eq(
+          {
+            "data.1": ["hash expected"]
+          }
+        )
       end
     end
 
@@ -452,10 +456,12 @@ RSpec.describe Verse::Schema do
         )
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
-        expect(result.value).to eq({
-                                     title: "Hello",
-                                     content: "World"
-                                   })
+        expect(result.value).to eq(
+          {
+            title: "Hello",
+            content: "World"
+          }
+        )
       end
 
       it "validates (subhash)" do
@@ -507,18 +513,22 @@ RSpec.describe Verse::Schema do
 
     context "OPEN_HASH" do
       it "validates" do
-        result = Examples::OPEN_HASH.validate({
-                                                "name" => "John Doe",
-                                                "age" => 30,
-                                                "unknown" => "value"
-                                              })
+        result = Examples::OPEN_HASH.validate(
+          {
+            "name" => "John Doe",
+            "age" => 30,
+            "unknown" => "value"
+          }
+        )
         expect(result.errors).to eq({})
         expect(result.fail?).to be(false)
-        expect(result.value).to eq({
-                                     name: "John Doe",
-                                     age: 30,
-                                     unknown: "value"
-                                   })
+        expect(result.value).to eq(
+          {
+            name: "John Doe",
+            age: 30,
+            unknown: "value"
+          }
+        )
       end
 
       it "fails with complete errors list" do
@@ -526,9 +536,11 @@ RSpec.describe Verse::Schema do
                                                 "age" => 21
                                               })
         expect(result.success?).to be(false)
-        expect(result.errors).to eq({
-                                      name: ["is required"]
-                                    })
+        expect(result.errors).to eq(
+          {
+            name: ["is required"]
+          }
+        )
       end
     end
 
@@ -698,11 +710,13 @@ RSpec.describe Verse::Schema do
       )
 
       expect(result.fail?).to be(false)
-      expect(result.value).to eq({
-                                   type: "unknown",
-                                   ordered: false,
-                                   has_no_default: "yep"
-                                 })
+      expect(result.value).to eq(
+        {
+          type: "unknown",
+          ordered: false,
+          has_no_default: "yep"
+        }
+      )
     end
 
     it "requires disable default" do
@@ -711,9 +725,11 @@ RSpec.describe Verse::Schema do
       )
 
       expect(result.fail?).to be(true)
-      expect(result.errors).to eq({
-                                    has_no_default: ["is required"]
-                                  })
+      expect(result.errors).to eq(
+        {
+          has_no_default: ["is required"]
+        }
+      )
     end
 
     it "can still put value to default field" do
@@ -726,29 +742,33 @@ RSpec.describe Verse::Schema do
       )
 
       expect(result.fail?).to be(false)
-      expect(result.value).to eq({
-                                   type: "known",
-                                   ordered: true,
-                                   has_no_default: "uh"
-                                 })
+      expect(result.value).to eq(
+        {
+          type: "known",
+          ordered: true,
+          has_no_default: "uh"
+        }
+      )
     end
   end
 
   context "COMPLEX_EXAMPLE" do
     it "validates" do
-      result = Examples::COMPLEX_EXAMPLE.validate({
-        "events" => [{
-          "at" => "2011-10-05T14:48:00.000Z",
-          "type" => "created",
-          "provider" => "facebook",
-          "data" => {
-            "url" => "https://facebook.com/123",
-            "name" => "John Doe",
-            "age" => 30
-          },
-          "source" => "facebook"
-        }]
-      })
+      result = Examples::COMPLEX_EXAMPLE.validate(
+        {
+          "events" => [{
+            "at" => "2011-10-05T14:48:00.000Z",
+            "type" => "created",
+            "provider" => "facebook",
+            "data" => {
+              "url" => "https://facebook.com/123",
+              "name" => "John Doe",
+              "age" => 30
+            },
+            "source" => "facebook"
+          }]
+        }
+      )
       expect(result.errors).to eq({})
       expect(result.fail?).to be(false)
       expect(result.value).to eq(
@@ -768,19 +788,21 @@ RSpec.describe Verse::Schema do
 
     it "fails if wrong event structure" do
       # rule says that google event requires search
-      result = Examples::COMPLEX_EXAMPLE.validate({
-        "events" => [{
-          "at" => "2011-10-05T14:48:00.000Z",
-          "type" => "created",
-          "provider" => "google",
-          "data" => {
-            "url" => "https://facebook.com/123",
-            "name" => "John Doe",
-            "age" => 30
-          },
-          "source" => "facebook"
-        }]
-      })
+      result = Examples::COMPLEX_EXAMPLE.validate(
+        {
+          "events" => [{
+            "at" => "2011-10-05T14:48:00.000Z",
+            "type" => "created",
+            "provider" => "google",
+            "data" => {
+              "url" => "https://facebook.com/123",
+              "name" => "John Doe",
+              "age" => 30
+            },
+            "source" => "facebook"
+          }]
+        }
+      )
       expect(result.success?).to be(false)
       expect(result.errors).to eq(
         {
@@ -833,6 +855,125 @@ RSpec.describe Verse::Schema do
       expect(result.errors).to eq(
         {
           age: ["must be greater than 30"]
+        }
+      )
+    end
+  end
+
+  context "INHERITANCE" do
+    it "validates" do
+      result = Examples::INHERITANCE.validate(
+        {
+          content:
+            {
+              type: "xchild",
+              id: 1,
+              data: {
+                x: 1,
+                y: 2.5
+              }
+            }
+        }
+      )
+
+      expect(result.success?).to be(true)
+    end
+
+    it "validates (child 2)" do
+      result = Examples::INHERITANCE.validate(
+        {
+          content:
+            {
+              type: "ychild",
+              id: 1,
+              data: {
+                content: "hello"
+              }
+            }
+        }
+      )
+
+      expect(result.success?).to be(true)
+    end
+
+    it "inherit correctly" do
+      example = Examples::INHERITANCE
+
+      expect(example.child_a < example.parent).to be(true)
+      expect(example.child_b < example.parent).to be(true)
+      expect(example.child_a < example.child_b).to be(false)
+    end
+  end
+
+  context "AGGREGATION" do
+    it "validates" do
+      schema_aggregate = Examples::AGGREGATION_IS_MAJOR + Examples::AGGREGATION_HAS_CONTENT
+
+      result = schema_aggregate.validate(
+        {
+          age: 21,
+          content: "example"
+        }
+      )
+
+      expect(result.success?)
+      expect(result.value).to eq(
+        {
+          age: 21,
+          content: "example"
+        }
+      )
+
+      result = schema_aggregate.validate(
+        {
+          age: 21,
+          content: { custom: true }
+        }
+      )
+
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(
+        {
+          age: 21,
+          content: { custom: true }
+        }
+      )
+    end
+
+    it "run rules" do
+      schema_aggregate = Examples::AGGREGATION_HAS_CONTENT + Examples::AGGREGATION_IS_MAJOR
+
+      result = schema_aggregate.validate(
+        {
+          age: 15
+        }
+      )
+
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          age: ["must be major"],
+          content: ["is required"]
+        }
+      )
+    end
+
+    it "can aggregate on itself (idempotence, sort of)" do
+      schema_aggregate = Examples::AGGREGATION_HAS_CONTENT + Examples::AGGREGATION_IS_MAJOR
+      schema_aggregate += Examples::AGGREGATION_HAS_CONTENT
+
+      result = schema_aggregate.validate(
+        {
+          age: 21,
+          content: "example"
+        }
+      )
+
+      expect(result.success?)
+      expect(result.value).to eq(
+        {
+          age: 21,
+          content: "example"
         }
       )
     end

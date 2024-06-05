@@ -27,7 +27,7 @@ module Verse
       end
 
       def dup
-        PostProcessor.new(&@block).tap do |new_pp|
+        PostProcessor.new(**opts.dup, &@block).tap do |new_pp|
           new_pp.attach(@next.dup) if @next
         end
       end

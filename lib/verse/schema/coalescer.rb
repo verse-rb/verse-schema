@@ -19,11 +19,11 @@ module Verse
           proc do |value, _opts, _key, _error|
             next value if value.is_a?(type)
 
-            raise Error, "Invalid cast to `#{type}` for `#{value}`"
+            raise Error, "invalid cast to `#{type}` for `#{value}`"
           end
         else
           proc do |value, _opts, _key, _error|
-            raise Error, "Invalid cast to `#{type}` for `#{value}`"
+            raise Error, "invalid cast to `#{type}` for `#{value}`"
           end
         end
       end

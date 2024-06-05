@@ -10,18 +10,46 @@ module Verse
     class Field
       include Optionable
 
-      attr_reader :name, :type
+      attr_reader :name, :type, :opts, :post_processors
 
-      def initialize(name, type, opts, &block)
+      def initialize(name, type, opts, post_processors: IDENTITY_PP.dup, &block)
         @name = name
-        @type = type
         @opts = opts
         # Setup identity processor
-        @post_processors = IDENTITY_PP.dup
+        @post_processors = post_processors
 
-        return unless block_given?
+        if type.is_a?(Schema::Base)
+          @type = Hash
+          @opts[:schema] = type
+        else
+          @type = type
+        end
 
-        @opts[:block] = Schema.define(&block)
+        if block_given?
+          if @opts[:of]
+            raise ArgumentError, "cannot pass `of` and a block at the same time"
+          end
+
+          if @opts[:schema]
+            raise ArgumentError, "cannot pass `schema` and a block at the same time"
+          end
+
+          if [Hash, Object].include?(type)
+            @type = Hash
+            @opts[:schema] = Schema.define(&block)
+          elsif type == Array
+            @opts[:of] = Schema.define(&block)
+          end
+        end
+
+        return if [Hash, Array].include?(@type)
+        if @opts[:of]
+          raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
+        end
+
+        return unless @opts[:schema]
+
+        raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
       end
 
       option :key, default: -> { @name }
@@ -31,6 +59,15 @@ module Verse
         @opts[:optional] = true
 
         self
+      end
+
+      def dup
+        Field.new(
+          @name,
+          @type,
+          @opts.dup,
+          post_processors: @post_processors.dup
+        )
       end
 
       # Add metadata to the field. Useful for documentation
@@ -77,11 +114,15 @@ module Verse
         end
       end
 
+      # Check if the field has a default value
+      # @return [Boolean] true if the field has a default value
       def default?
         !!@has_default
       end
 
-      # Mark the field as required
+      # Mark the field as required. This will make the field mandatory.
+      # Remove any default value.
+      # @return [self]
       def required
         @opts[:optional] = false
         @has_default = false
@@ -89,12 +130,16 @@ module Verse
         self
       end
 
+      # Check if the field is required
+      # @return [Boolean] true if the field is required
       def required?
         !@opts[:optional]
       end
 
+      # Check if the field is optional
+      # @return [Boolean] true if the field is optional
       def optional?
-        !required?
+        !!@opts[:optional]
       end
 
       # Add a rule to the field. A rule is a block that will be called
@@ -141,6 +186,9 @@ module Verse
       #
       # If the block raises an error, the error will be added to the error
       # builder.
+      #
+      # @param [Proc] block the block to call to transform the value
+      # @return [self]
       def transform(&block)
         callback = proc do |value, error_builder|
           stop if error_builder.errors.any?
@@ -150,7 +198,38 @@ module Verse
         @post_processors.attach(
           PostProcessor.new(&callback)
         )
+
+        self
       end
+
+      # Check whether the field is matching the condition of the parent field.
+      def inherit?(parent_field)
+        case @type
+        when Array
+          # @type must be a superset of parent.
+          # not easy to do, FIXME
+          raise NotImplementedError, "inheritance check with multiple type field not supported yet."
+        else
+          # wrong type
+          return false unless @type <= parent_field.type
+
+          if parent_field.opts[:schema]
+            @type == Hash &&
+              (
+                !@opts[:schema] ||
+                @opts[:schema] <= parent_field.opts[:schema]
+              )
+          elsif parent_field.opts[:of]
+            # Open array / dictionary OR the type of `of` inherit of
+            # the parent.
+            !@opts[:of] || @opts[:of] < parent_field.opts[:of]
+          else
+            true
+          end
+        end
+      end
+
+      alias_method :<, :inherit?
 
       # :nodoc:
       def apply(value, output, error_builder, locals)

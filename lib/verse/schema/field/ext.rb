@@ -5,13 +5,10 @@ module Verse
     class Field
       def filled(message = "must be filled")
         rule(message) do |value, _output|
-          if value.respond_to?(:empty?)
-            !value.empty?
-          elsif value.nil?
-            false
-          else
-            true
-          end
+          next false if value.nil?
+          next !value.empty? if value.respond_to?(:empty?)
+
+          next true
         end
       end
 
