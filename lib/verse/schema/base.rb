@@ -179,7 +179,21 @@ module Verse
           @dataclass ||= Data.define(
             *fields.map(&:name)
           ) do
-            define_method(:initialize) do |**hash|
+            previous_method = singleton_method(:new)
+
+            define_singleton_method(:new) do |*args, **hash|
+              if args.size > 1
+                raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
+              end
+
+              if args.size ==1 && !hash.empty?
+                raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
+              end
+
+              if args.size == 1
+                hash = args.first
+              end
+
               result = schema.validate(hash)
 
               unless result.success?
@@ -194,18 +208,19 @@ module Verse
                 next unless data
 
                 if f.opts[:schema]
-                  value[f.name] = f.opts[:schema].dataclass.new(**data)
+                  value[f.name] = f.opts[:schema].dataclass.new(data)
                 elsif f.opts[:of]
                   if f.type == Array
-                    value[f.name] = data.map{ |x| f.type.dataclass.new(**x) }
+                    value[f.name] = data.map{ |x| f.opts[:of].dataclass.new(**x) }
                   elsif f.type == Hash
-                    value[f.name] = data.transform_values{ |v| f.type.dataclass.new(**v) }
+                    value[f.name] = data.transform_values{ |v| f.opts[:of].dataclass.new(**v) }
                   end
                 end
               end
 
-              super(**value)
+              previous_method.call(**value)
             end
+
           end
         end
       end

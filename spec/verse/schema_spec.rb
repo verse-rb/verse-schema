@@ -202,9 +202,11 @@ RSpec.describe Verse::Schema do
             klass = Examples::NESTED_SCHEMA.dataclass
 
             data = klass.new(
-              data: {
-                name: "John Doe",
-                age: 30
+              {
+                data: {
+                  name: "John Doe",
+                  age: 30
+                }
               }
             )
 
