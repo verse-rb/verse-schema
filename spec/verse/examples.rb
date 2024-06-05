@@ -210,6 +210,15 @@ module Examples
     field(:content, [String, Hash])
   end
 
+  AGGREGATION_SAME_KEY_DIFFERENT_TYPE1 = Verse::Schema.define do
+    field(:content, String)
+  end
+
+  AGGREGATION_SAME_KEY_DIFFERENT_TYPE2 = Verse::Schema.define do
+    field(:content, Symbol)
+  end
+
+
   EXAMPLE_WITH_LOCALS_CLUE = Verse::Schema.define do
     subschema = define do
       field(:x, Integer)
@@ -222,4 +231,18 @@ module Examples
 
     field(:content, subschema)
   end
+
+  EXAMPLE_WITH_LOCALS_CLUE_HASH = Verse::Schema.define do
+    subschema = define do
+      field(:x, Integer)
+
+      transform do |hash|
+        hash[:path] = locals[:__path__].dup
+        hash
+      end
+    end
+
+    field(:content, Hash, of: subschema)
+  end
+
 end

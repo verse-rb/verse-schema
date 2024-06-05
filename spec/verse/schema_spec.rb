@@ -979,6 +979,24 @@ RSpec.describe Verse::Schema do
         }
       )
     end
+
+    it "aggregate the same key with different types" do
+      schema = Examples::AGGREGATION_SAME_KEY_DIFFERENT_TYPE1 +
+                Examples::AGGREGATION_SAME_KEY_DIFFERENT_TYPE2
+
+      result = schema.validate(
+        {
+          content: "example"
+        }
+      )
+      expect(result.success?).to be(true)
+      result = schema.validate(
+        {
+          content: :example
+        }
+      )
+      expect(result.success?).to be(true)
+    end
   end
 
   context "EXAMPLE_WITH_LOCALS_CLUE" do
@@ -995,5 +1013,27 @@ RSpec.describe Verse::Schema do
       value = result.value
       expect(value[:content][:path]).to eq([:content])
     end
+
+    it "validates (hash)" do
+      result = Examples::EXAMPLE_WITH_LOCALS_CLUE_HASH.validate(
+        {
+          content: {
+            key1: {
+              x: 1
+            },
+            key2: {
+              x: 2
+            }
+          }
+        }
+      )
+
+      expect(result.success?).to be(true)
+      value = result.value
+
+      expect(value[:content][:key1][:path]).to eq([:content, :key1])
+      expect(value[:content][:key2][:path]).to eq([:content, :key2])
+    end
+
   end
 end

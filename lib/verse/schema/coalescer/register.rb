@@ -84,7 +84,7 @@ module Verse
             begin
               locals[:__path__].push(k)
 
-              field = Coalescer.transform(v, opts[:of])
+              field = Coalescer.transform(v, opts[:of], locals:)
 
               if field.is_a?(Result)
                 error_builder.combine(k, field.errors)
