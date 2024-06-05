@@ -80,13 +80,20 @@ module Verse
           error_builder = Verse::Schema::ErrorBuilder.new
 
           output = value.inject({}) do |h, (k, v)|
-            field = Coalescer.transform(v, opts[:of])
+            locals[:__path__] ||= []
+            begin
+              locals[:__path__].push(k)
 
-            if field.is_a?(Result)
-              error_builder.combine(k, field.errors)
-              h[k.to_sym] = field.value
-            else
-              h[k.to_sym] = field
+              field = Coalescer.transform(v, opts[:of])
+
+              if field.is_a?(Result)
+                error_builder.combine(k, field.errors)
+                h[k.to_sym] = field.value
+              else
+                h[k.to_sym] = field
+              end
+            ensure
+              locals[:__path__].pop
             end
 
             h
@@ -102,7 +109,7 @@ module Verse
         end
       end
 
-      register(Array) do |value, opts|
+      register(Array) do |value, opts, locals:|
         case value
         when Array
           if opts[:of].nil?
@@ -112,13 +119,20 @@ module Verse
           error_builder = Verse::Schema::ErrorBuilder.new
 
           output = value.map.with_index do |v, idx|
-            field = Coalescer.transform(v, opts[:of], {})
+            locals[:__path__] ||= []
+            begin
+              locals[:__path__].push(idx)
 
-            if field.is_a?(Result)
-              error_builder.combine(idx, field.errors)
-              field.value
-            else
-              field
+              field = Coalescer.transform(v, opts[:of], {})
+
+              if field.is_a?(Result)
+                error_builder.combine(idx, field.errors)
+                field.value
+              else
+                field
+              end
+            ensure
+              locals[:__path__].pop
             end
           rescue Coalescer::Error => e
             error_builder.add(idx, e.message)
