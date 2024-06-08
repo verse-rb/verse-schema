@@ -224,11 +224,19 @@ module Verse
           elsif parent_field.opts[:of]
             # Open array / dictionary OR the type of `of` inherit of
             # the parent.
-            !@opts[:of] || @opts[:of] < parent_field.opts[:of]
+            !@opts[:of] || @opts[:of] <= parent_field.opts[:of]
           else
             true
           end
         end
+      end
+
+      def <=(parent_field)
+        (
+          parent_field.type == self.type &&
+          parent_field.opts[:schema] == self.opts[:schema] &&
+          parent_field.opts[:of] == self.opts[:of]
+        ) || inherit?(parent_field)
       end
 
       alias_method :<, :inherit?

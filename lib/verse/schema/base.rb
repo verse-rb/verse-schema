@@ -252,7 +252,7 @@ module Verse
               previous_method.call(**value)
             end
 
-            instance_eval(&block) if block_given?
+            class_eval(&block) if block_given?
           end
         end
       end
