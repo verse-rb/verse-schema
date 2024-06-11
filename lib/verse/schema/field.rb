@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require_relative "./optionable"
 require_relative "./coalescer"
@@ -240,6 +241,52 @@ module Verse
       end
 
       alias_method :<, :inherit?
+
+      private def explain_type(type, indent:, output:)
+        if type == Hash
+          if opts[:schema]
+            opts[:schema].explain(indent: indent + "  ", output:)
+            output << "#{indent}"
+          elsif opts[:of]
+            output << "Dictionary<Symbol,\n"
+            opts[:of].explain(indent: indent + "  ", output:)
+            output << "#{indent}}>"
+          else
+            output << "Hash"
+          end
+        elsif type == Array
+          if opts[:of]
+            output << "Array<\n"
+            opts[:of].explain(indent: indent + "  ", output:)
+            output << "#{indent}>"
+          else
+            output << "Array"
+          end
+        elsif type.is_a?(Base)
+          type.explain(indent: indent + "  ", output:)
+        elsif type.is_a?(Array)
+          output << "Union<\n"
+          type.each_with_index do |t, idx|
+            output << "#{indent},\n" unless idx == 0
+            explain_type(t, indent: indent + "  ", output: output)
+          end
+          output << "#{indent}>"
+
+        else
+          output << "#{type}"
+        end
+      end
+
+      def explain(indent: "", output: String.new)
+        default = @has_default ? " = #{default}" : ""
+        optional = @opts[:optional] ? "?" : ""
+
+        output << "#{indent}#{name}#{optional} : "
+        explain_type(type, indent: indent, output: output)
+        output << "#{default}\n"
+
+        output
+      end
 
       # :nodoc:
       def apply(value, output, error_builder, locals)

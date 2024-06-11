@@ -287,6 +287,22 @@ RSpec.describe Verse::Schema do
         )
       end
 
+      it "explain" do
+        result = Examples::ARRAY_SCHEMA.explain
+        puts result
+        expect(result).to eq(<<-EXPLAIN
+{
+  data : Array<
+    {
+      name : String
+      age : Integer
+    }
+  >
+}
+        EXPLAIN
+        )
+      end
+
       it "fails with complete errors list" do
         result = Examples::ARRAY_SCHEMA.validate({})
         expect(result.success?).to be(false)
@@ -812,6 +828,36 @@ RSpec.describe Verse::Schema do
         }
       )
     end
+
+    it "explain" do
+      result = Examples::COMPLEX_EXAMPLE.explain
+
+      expected = <<-EXPLAIN
+{
+  events : Array<
+    {
+      at : Time
+      type : Symbol
+      provider : String
+      data : Union<
+          {
+            url : String
+          }
+      ,
+          {
+            search : String
+          }
+      >
+      source : String
+    }
+  >
+}
+EXPLAIN
+
+      expect(result).to eq(expected)
+    end
+
+
   end
 
   context "DATE_TIME" do

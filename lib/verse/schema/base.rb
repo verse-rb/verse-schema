@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+# encoding: utf-8
 
 require_relative "./field"
 require_relative "./result"
@@ -256,6 +257,24 @@ module Verse
           end
         end
       end
+
+      # Return a human-readable string representation of the schema.
+      # The transformers and rules are not included in the output.
+      def explain(indent: "", output: String.new)
+        output << indent << "{\n"
+
+        @fields.each do |field|
+          field.explain(
+            indent: "#{indent}  ",
+            output:
+          )
+        end
+
+        output << indent << "}\n"
+
+        output
+      end
+
     end
   end
 end
