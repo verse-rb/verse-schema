@@ -156,7 +156,10 @@ module Verse
         when TrueClass, FalseClass
           value
         when String
-          %w[t y true yes].include?(value)
+          next true if %w[t y true yes].include?(value)
+          next false if %[f n false no].include?(value)
+
+          raise Coalescer::Error, "must be a boolean"
         when Numeric
           value != 0
         else

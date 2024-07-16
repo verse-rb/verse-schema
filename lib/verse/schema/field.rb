@@ -195,7 +195,7 @@ module Verse
       def transform(&block)
         callback = proc do |value, error_builder|
           stop if error_builder.errors.any?
-          block.call(value, error_builder)
+          instance_exec(value, error_builder, &block)
         end
 
         @post_processors.attach(
@@ -247,17 +247,17 @@ module Verse
           if opts[:schema]
             opts[:schema].explain(indent: indent + "  ", output:)
             output << "#{indent}"
-          elsif opts[:of]
+          elsif opts[:of] && opts[:of] != Object
             output << "Dictionary<Symbol,\n"
-            opts[:of].explain(indent: indent + "  ", output:)
-            output << "#{indent}}>"
+            explain_type(opts[:of], indent: indent + "  ", output:)
+            output << "#{indent}>"
           else
             output << "Hash"
           end
         elsif type == Array
-          if opts[:of]
+          if opts[:of] && opts[:of] != Object
             output << "Array<\n"
-            opts[:of].explain(indent: indent + "  ", output:)
+            explain_type(opts[:of], indent: indent + "  ", output:)
             output << "#{indent}>"
           else
             output << "Array"
@@ -273,7 +273,7 @@ module Verse
           output << "#{indent}>"
 
         else
-          output << "#{type}"
+          output << "#{indent}#{type}\n"
         end
       end
 

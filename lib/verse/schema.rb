@@ -16,6 +16,15 @@ module Verse
       Verse::Schema::Base.define(from, &block)
     end
 
+    def empty
+      @empty ||= begin
+        empty_schema = Verse::Schema.define{ }
+        empty_schema.dataclass # Generate the dataclass
+        empty_schema.freeze # Freeze to avoid modification
+        empty_schema
+      end
+    end
+
     def rule(message, &block)
       PostProcessor.new do |value, error|
         case block.arity

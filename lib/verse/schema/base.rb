@@ -76,6 +76,10 @@ module Verse
         @extra_fields = true
       end
 
+      def extra_fields?
+        !!@extra_fields
+      end
+
       def valid?(input)
         validate(input).success?
       end
@@ -221,6 +225,13 @@ module Verse
               value = result.value
 
               schema.fields.each do |f|
+                # Prevent issue with optional fields
+                # and required fields in Data structure
+                if f.opts[:optional] && !value.key?(f.name)
+                  value[f.name] = nil
+                  next
+                end
+
                 data = value[f.name]
 
                 next unless data
@@ -238,7 +249,7 @@ module Verse
                         x
                       end
                     end
-                  elsif f.type == Hash
+                  elsif f.type == Hash && data.is_a?(Hash)
                     value[f.name] = data.transform_values do |v|
                       if v.is_a?(Hash)
                         f.opts[:of].dataclass.from_raw(v)
