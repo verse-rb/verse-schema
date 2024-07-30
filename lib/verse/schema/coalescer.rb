@@ -10,7 +10,7 @@ module Verse
       DEFAULT_MAPPER = lambda do |type|
         case type
         when Base
-          proc do |value, opts, locals:|
+          proc do |value, _opts, locals:|
             raise Error, "hash expected" unless value.is_a?(Hash)
 
             type.validate(value, locals:)

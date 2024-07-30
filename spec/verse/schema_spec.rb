@@ -290,17 +290,17 @@ RSpec.describe Verse::Schema do
       it "explain" do
         result = Examples::ARRAY_SCHEMA.explain
         puts result
-        expect(result).to eq(<<-EXPLAIN
-{
-  data : Array<
-    {
-      name : String
-      age : Integer
-    }
-  >
-}
+        expect(result).to eq(<<~EXPLAIN
+          {
+            data : Array<
+              {
+                name : String
+                age : Integer
+              }
+            >
+          }
         EXPLAIN
-        )
+                            )
       end
 
       it "fails with complete errors list" do
@@ -832,32 +832,30 @@ RSpec.describe Verse::Schema do
     it "explain" do
       result = Examples::COMPLEX_EXAMPLE.explain
 
-      expected = <<-EXPLAIN
-{
-  events : Array<
-    {
-      at : Time
-      type : Symbol
-      provider : String
-      data : Union<
-          {
-            url : String
-          }
-      ,
-          {
-            search : String
-          }
-      >
-      source : String
-    }
-  >
-}
-EXPLAIN
+      expected = <<~EXPLAIN
+        {
+          events : Array<
+            {
+              at : Time
+              type : Symbol
+              provider : String
+              data : Union<
+                  {
+                    url : String
+                  }
+              ,
+                  {
+                    search : String
+                  }
+              >
+              source : String
+            }
+          >
+        }
+      EXPLAIN
 
       expect(result).to eq(expected)
     end
-
-
   end
 
   context "DATE_TIME" do
@@ -1028,7 +1026,7 @@ EXPLAIN
 
     it "aggregate the same key with different types" do
       schema = Examples::AGGREGATION_SAME_KEY_DIFFERENT_TYPE1 +
-                Examples::AGGREGATION_SAME_KEY_DIFFERENT_TYPE2
+               Examples::AGGREGATION_SAME_KEY_DIFFERENT_TYPE2
 
       result = schema.validate(
         {
@@ -1080,6 +1078,5 @@ EXPLAIN
       expect(value[:content][:key1][:path]).to eq([:content, :key1])
       expect(value[:content][:key2][:path]).to eq([:content, :key2])
     end
-
   end
 end

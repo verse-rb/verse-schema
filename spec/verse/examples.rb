@@ -218,7 +218,6 @@ module Examples
     field(:content, Symbol)
   end
 
-
   EXAMPLE_WITH_LOCALS_CLUE = Verse::Schema.define do
     subschema = define do
       field(:x, Integer)
@@ -244,5 +243,4 @@ module Examples
 
     field(:content, Hash, of: subschema)
   end
-
 end

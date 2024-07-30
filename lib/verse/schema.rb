@@ -18,7 +18,7 @@ module Verse
 
     def empty
       @empty ||= begin
-        empty_schema = Verse::Schema.define{ }
+        empty_schema = Verse::Schema.define
         empty_schema.dataclass # Generate the dataclass
         empty_schema.freeze # Freeze to avoid modification
         empty_schema

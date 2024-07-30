@@ -1,5 +1,4 @@
 # frozen_string_literal: true
-# encoding: utf-8
 
 require_relative "./field"
 require_relative "./result"
@@ -150,6 +149,12 @@ module Verse
         other == self || inherit?(other)
       end
 
+      # rubocop:disable Style/InverseMethods
+      def >(other)
+        !(other <= self)
+      end
+      # rubocop:enable Style/InverseMethods
+
       # Aggregation of two schemas.
       def +(other)
         raise ArgumentError, "aggregate must be a schema" unless other.is_a?(Base)
@@ -208,7 +213,7 @@ module Verse
                 raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
               end
 
-              if args.size ==1 && !hash.empty?
+              if args.size == 1 && !hash.empty?
                 raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
               end
 
@@ -240,7 +245,7 @@ module Verse
                   if data.is_a?(Hash)
                     value[f.name] = f.opts[:schema].dataclass.from_raw(data)
                   end
-                elsif f.opts[:of] && f.opts[:of].is_a?(Base)
+                elsif f.opts[:of].is_a?(Base)
                   if f.type == Array
                     value[f.name] = data.map do |x|
                       if x.is_a?(Hash)
@@ -285,7 +290,6 @@ module Verse
 
         output
       end
-
     end
   end
 end
