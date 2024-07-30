@@ -151,7 +151,7 @@ module Verse
 
       # rubocop:disable Style/InverseMethods
       def >(other)
-        !(other <= self)
+        !self.<=(other)
       end
       # rubocop:enable Style/InverseMethods
 
