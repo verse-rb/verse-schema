@@ -105,8 +105,21 @@ module Verse
 
           Result.new(output, error_builder.errors)
         else
-          # open hash
-          next value
+          # open hash, deep symbolize keys
+          deep_symbolize_keys = ->(value) do
+            case value
+            when Array
+              value.map{ |x| deep_symbolize_keys.call(x) }
+            when Hash
+              value.map do |k, v|
+                [k.to_sym, deep_symbolize_keys.call(v)]
+              end.to_h
+            else
+              value
+            end
+          end
+
+          next deep_symbolize_keys.call(value)
         end
       end
 
