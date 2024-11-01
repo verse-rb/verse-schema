@@ -10,22 +10,35 @@ module Verse
       end
 
       module ClassMethods
-        def option(name, default: nil, &block)
-          define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
-            if value == Verse::Schema::Optionable::NOTHING
+        def option(name, default: nil)
+          name = name.to_sym
+          iv_name = "@#{name}".to_sym
 
-              return instance_variable_get("@#{name}") if instance_variable_defined?("@#{name}")
-
-              return instance_exec(&default) if default.is_a?(Proc)
-
-              return default
-
-            else
-              instance_variable_set("@#{name}", block_given? ? block.call(value) : value)
+          case default
+          when Proc
+            define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
+              if value == Verse::Schema::Optionable::NOTHING
+                return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
+                value = instance_exec(&default)
+                instance_variable_set(iv_name, value)
+                value
+              else
+                instance_variable_set(iv_name, block_given? ? yield(value) : value)
+                self
+              end
             end
-
-            self
+          else
+            define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
+              if value == Verse::Schema::Optionable::NOTHING
+                return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
+                return default
+              else
+                instance_variable_set(iv_name, block_given? ? yield(value) : value)
+                self
+              end
+            end
           end
+
         end
       end
     end

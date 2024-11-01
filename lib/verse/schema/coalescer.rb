@@ -37,9 +37,9 @@ module Verse
 
         def transform(value, type, opts = {}, locals: {})
           if type.is_a?(Array)
-            has_result = false
             converted = nil
 
+            found = false
             type.each do |t|
               converted = @mapping.fetch(t) do
                 DEFAULT_MAPPER.call(t)
@@ -47,14 +47,14 @@ module Verse
 
               if !converted.is_a?(Result) ||
                  (converted.is_a?(Result) && converted.success?)
-                has_result = true
+                found = true
                 break
               end
             rescue StandardError
               # next
             end
 
-            return converted if has_result || converted.is_a?(Result)
+            return converted if found || converted.is_a?(Result)
 
             raise Error, "Invalid cast to `#{type}` for `#{value}`"
           else

@@ -98,16 +98,19 @@ module Verse
 
         output = {}
 
-        @fields.each do |field|
-          exists = input.key?(field.key.to_s) || input.key?(field.key.to_sym)
+        locals[:__path__] ||= []
 
-          locals[:__path__] ||= []
+        @fields.each do |field|
+          key_s = field.key.to_s
+          key_sym = key_s.to_sym
+
+          exists = true
+          value = input.fetch(key_s) { input.fetch(key_sym) { exists = false } }
+
           begin
-            locals[:__path__].push(field.key)
+            locals[:__path__].push(key_sym)
 
             if exists
-              value = input.fetch(field.key.to_s, input[field.key.to_sym])
-
               field.apply(value, output, error_builder, locals)
             elsif field.default?
               field.apply(field.default, output, error_builder, locals)
@@ -174,7 +177,13 @@ module Verse
                 [field.type, f.type].flatten.uniq
               end
 
-            field.post_processors.attach(f.post_processors)
+            if f.post_processors
+              if field.post_processors
+                field.post_processors.attach(f.post_processors)
+              else
+                field.post_processors = f.post_processors
+              end
+            end
 
             new_schema.fields[field_index] = Field.new(
               field.name,
@@ -230,34 +239,38 @@ module Verse
               value = result.value
 
               schema.fields.each do |f|
+                name = f.name
+
                 # Prevent issue with optional fields
                 # and required fields in Data structure
-                if f.opts[:optional] && !value.key?(f.name)
-                  value[f.name] = nil
+                if !value.key?(name)
+                  value[name] = nil
                   next
                 end
 
-                data = value[f.name]
+                data = value[name]
 
                 next unless data
 
-                if f.opts[:schema]
+                opts = f.opts
+
+                if opt_schema = opts[:schema]
                   if data.is_a?(Hash)
-                    value[f.name] = f.opts[:schema].dataclass.from_raw(data)
+                    value[name] = opt_schema.dataclass.from_raw(data)
                   end
-                elsif f.opts[:of].is_a?(Base)
+                elsif (of = opts[:of]).is_a?(Base)
                   if f.type == Array
-                    value[f.name] = data.map do |x|
+                    value[name] = data.map do |x|
                       if x.is_a?(Hash)
-                        f.opts[:of].dataclass.from_raw(x)
+                        of.dataclass.from_raw(x)
                       else
                         x
                       end
                     end
                   elsif f.type == Hash && data.is_a?(Hash)
-                    value[f.name] = data.transform_values do |v|
+                    value[name] = data.transform_values do |v|
                       if v.is_a?(Hash)
-                        f.opts[:of].dataclass.from_raw(v)
+                        of.dataclass.from_raw(v)
                       else
                         v
                       end
