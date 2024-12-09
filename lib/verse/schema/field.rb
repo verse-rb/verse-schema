@@ -201,7 +201,7 @@ module Verse
       # @return [self]
       def transform(&block)
         callback = proc do |value, name, error_builder|
-          stop if error_builder.errors.any?
+          next self if error_builder.errors.any?
           instance_exec(value, error_builder, &block)
         end
 

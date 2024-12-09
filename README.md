@@ -211,6 +211,17 @@ Please note that due to the coalescence process, the array will be coerced to th
 
 Here everything become Integer as the first type in `of` option is Integer and coercion is applied.
 
+### Recursive schema
+
+You can define recursive schema with `Hash, of: self` and `Array, of: self` :
+
+```ruby
+  recursive_schema = Verse::Schema.define do
+    field(:name, String).label("Name").description("The name of the item").filled
+    field(:children, Array, of: self).default([])
+  end
+```
+
 ### Rules
 
 Rules can be setup on fields as seen above. You can also define global rules that will be applied to the whole schema:

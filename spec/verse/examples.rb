@@ -46,6 +46,18 @@ module Examples
     field(:data, Array, of: SIMPLE_SCHEMA)
   end
 
+  # Recursive structure like: { data: {a: {data: {}, value: ""}, value: ""} }
+  RECURSIVE_HASH_SCHEMA = Verse::Schema.define do
+    field(:data, Hash, of: self).default({})
+    field(:value, String)
+  end
+
+  # Recursive structure like: { data: [ data: [ data: [ ... ] ] ] }
+  RECURSIVE_ARRAY_SCHEMA = Verse::Schema.define do
+    field(:data, Array, of: self)
+    field(:value, String)
+  end
+
   # Array schema with block
   ARRAY_SCHEMA_WITH_BLOCK = Verse::Schema.define do
     field(:data, Array) do

@@ -1043,6 +1043,56 @@ RSpec.describe Verse::Schema do
     end
   end
 
+  context "RECUSIVE_HASH_SCHEMA" do
+    it "validates" do
+      result = Examples::RECURSIVE_HASH_SCHEMA.validate(
+        {
+          value: "root",
+          data: {
+            a: {
+              value: "a"
+            },
+            b: {
+              data: {
+                c: {
+                  value: "c"
+                }
+              },
+              value: "b"
+            }
+          }
+        }
+      )
+
+      expect(result.success?).to be(true)
+    end
+
+    it "fails if invalid" do
+      result = Examples::RECURSIVE_HASH_SCHEMA.validate(
+        {
+          value: "root",
+          data: {
+            a: {
+              value: "a"
+            },
+            b: {
+              data: "invalid"
+            }
+          }
+        }
+
+      )
+
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          "data.b.data": ["must be a hash"],
+          "data.b.value": ["is required"]
+        }
+      )
+    end
+  end
+
   context "EXAMPLE_WITH_LOCALS_CLUE" do
     it "validates" do
       result = Examples::EXAMPLE_WITH_LOCALS_CLUE.validate(

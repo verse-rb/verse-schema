@@ -50,7 +50,7 @@ def run_profiler
 
   RubyProf.start
 
-  10_000.times do
+  100_000.times do
     ShiftEntry.new({"to"=>"2024-10-16 12:00:00",
       "from"=>"2024-10-16 04:00:00",
       "details"=>"Worked on the project",
