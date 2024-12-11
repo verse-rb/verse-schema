@@ -17,12 +17,12 @@ module Verse
     end
 
     # Define the schema as an array of values
-    def array(of = nil, &block)
-      Verse::Schema::Base.array(of, &block)
+    def array(*types, &block)
+      Verse::Schema::Base.define_array(types, &block)
     end
 
-    def dictionary(of = nil, &block)
-      Verse::Schema::Base.dictionary(of, &block)
+    def dictionary(*types, &block)
+      Verse::Schema::Base.define_dictionary(types, &block)
     end
 
     def empty

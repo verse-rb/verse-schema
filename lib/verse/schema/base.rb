@@ -65,7 +65,7 @@ module Verse
         end
       end
 
-      def self.define_array(*primitive_classes, &block)
+      def self.define_array(primitive_classes, &block)
         Base.new(
           type: :array,
           primitive_classes:,
@@ -73,7 +73,7 @@ module Verse
         )
       end
 
-      def self.define_dictionary(*primitive_classes, &block)
+      def self.define_dictionary(primitive_classes, &block)
         Base.new(
           type: :dictionary,
           primitive_classes:,
@@ -219,10 +219,13 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          Result.new(output, error_builder.errors)
-
+          output[key] = coalesced_value
           locals[:__path__].pop
+        rescue Coalescer::Error => e
+          error_builder.add(key, e.message, **locals)
         end
+
+        Result.new(output, error_builder.errors)
       end
 
       def validate_array(input, error_builder, locals)
@@ -252,23 +255,31 @@ module Verse
           output << coalesced_value
 
           locals[:__path__].pop
+        rescue Coalescer::Error => e
+          error_builder.add(index, e.message, **locals)
         end
 
         Result.new(output, error_builder.errors)
       end
 
       def validate_primitive(input, error_builder, locals)
-        coalesced_value =
-          Coalescer.transform(
-            input,
-            @primitive_classes,
-            @opts,
-            locals:
-          )
+        coalesced_value = nil
 
-        if coalesced_value.is_a?(Result)
-          error_builder.combine(nil, coalesced_value.errors)
-          coalesced_value = coalesced_value.value
+        begin
+          coalesced_value =
+            Coalescer.transform(
+              input,
+              @primitive_classes,
+              @opts,
+              locals:
+            )
+
+          if coalesced_value.is_a?(Result)
+            error_builder.combine(nil, coalesced_value.errors)
+            coalesced_value = coalesced_value.value
+          end
+        rescue Coalescer::Error => e
+          error_builder.add(index, e.message, **locals)
         end
 
         Result.new(coalesced_value, error_builder.errors)

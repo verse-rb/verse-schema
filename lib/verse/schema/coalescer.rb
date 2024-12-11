@@ -56,7 +56,7 @@ module Verse
 
             return converted if found || converted.is_a?(Result)
 
-            raise Error, "Invalid cast to `#{type}` for `#{value}`"
+            raise Error, "invalid cast"
           else
             @mapping.fetch(type) do
               DEFAULT_MAPPER.call(type)
