@@ -255,4 +255,14 @@ module Examples
 
     field(:content, Hash, of: subschema)
   end
+
+
+  ITEM = Verse::Schema.define do
+    field(:name, String)
+  end
+
+  SCHEMA_DICTIONARY = Verse::Schema.dictionary(ITEM)
+  SCHEMA_ARRAY = Verse::Schema.array(ITEM)
+
+  SCHEMA_SCALAR = Verse::Schema.scalar(Integer, String)
 end

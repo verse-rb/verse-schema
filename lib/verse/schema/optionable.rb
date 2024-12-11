@@ -19,6 +19,7 @@ module Verse
             define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
               if value == Verse::Schema::Optionable::NOTHING
                 return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
+
                 value = instance_exec(&default)
                 instance_variable_set(iv_name, value)
                 value
@@ -31,14 +32,14 @@ module Verse
             define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
               if value == Verse::Schema::Optionable::NOTHING
                 return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
-                return default
+
+                default
               else
                 instance_variable_set(iv_name, block_given? ? yield(value) : value)
                 self
               end
             end
           end
-
         end
       end
     end

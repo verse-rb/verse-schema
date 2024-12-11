@@ -1080,7 +1080,6 @@ RSpec.describe Verse::Schema do
             }
           }
         }
-
       )
 
       expect(result.success?).to be(false)
@@ -1128,5 +1127,96 @@ RSpec.describe Verse::Schema do
       expect(value[:content][:key1][:path]).to eq([:content, :key1])
       expect(value[:content][:key2][:path]).to eq([:content, :key2])
     end
+  end
+
+  context "SCHEMA_DICTIONARY" do
+    it "validates" do
+      result = Examples::SCHEMA_DICTIONARY.validate(
+        {
+          a: { name: "a" },
+          b: { name: "b" }
+        }
+      )
+
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(
+        {
+          a: { name: "a" },
+          b: { name: "b" }
+        }
+      )
+    end
+
+    it "fails if one key is invalid" do
+      result = Examples::SCHEMA_DICTIONARY.validate(
+        {
+          a: { name: "a" },
+          b: "not a hash"
+        }
+      )
+
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          "b": ["invalid cast"]
+        }
+      )
+    end
+  end
+
+  context "SCHEMA_ARRAY" do
+    it "validates" do
+      result = Examples::SCHEMA_ARRAY.validate(
+        [
+          { name: "a" },
+          { name: "b" }
+        ]
+      )
+
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(
+        [
+          { name: "a" },
+          { name: "b" }
+        ]
+      )
+    end
+
+    it "fails if one key is invalid" do
+      result = Examples::SCHEMA_ARRAY.validate(
+        [
+          { name: "a" },
+          "not a hash"
+        ]
+      )
+
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq(
+        {
+          "1": ["invalid cast"]
+        }
+      )
+    end
+  end
+
+  context "SCHEMA_SCALAR" do
+    it "validates" do
+      result = Examples::SCHEMA_SCALAR.validate("hello")
+      expect(result.success?).to be(true)
+      expect(result.value).to eq("hello")
+
+      result = Examples::SCHEMA_SCALAR.validate(1)
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(1)
+    end
+
+    it "fails if invalid" do
+      result = Examples::SCHEMA_SCALAR.validate([])
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq({
+        :"" => ["invalid cast"]
+      })
+    end
+
   end
 end
