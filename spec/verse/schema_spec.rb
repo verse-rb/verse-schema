@@ -1198,4 +1198,25 @@ RSpec.describe Verse::Schema do
       )
     end
   end
+
+  context "SCHEMA_SCALAR" do
+    it "validates" do
+      result = Examples::SCHEMA_SCALAR.validate("hello")
+      expect(result.success?).to be(true)
+      expect(result.value).to eq("hello")
+
+      result = Examples::SCHEMA_SCALAR.validate(1)
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(1)
+    end
+
+    it "fails if invalid" do
+      result = Examples::SCHEMA_SCALAR.validate([])
+      expect(result.success?).to be(false)
+      expect(result.errors).to eq({
+        :"" => ["invalid cast"]
+      })
+    end
+
+  end
 end

@@ -263,4 +263,6 @@ module Examples
 
   SCHEMA_DICTIONARY = Verse::Schema.dictionary(ITEM)
   SCHEMA_ARRAY = Verse::Schema.array(ITEM)
+
+  SCHEMA_SCALAR = Verse::Schema.scalar(Integer, String)
 end

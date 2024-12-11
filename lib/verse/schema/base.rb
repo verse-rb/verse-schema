@@ -9,27 +9,27 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Base
-      attr_reader :fields, :post_processors, :type, :primitive_classes
+      attr_reader :fields, :post_processors, :type, :scalar_classes
 
       # Initialize a new schema.
       # @param fields [Array<Field>] The fields of the schema.
       # @param type [Symbol] The type of the schema:
       #        - :hash simple hash schema, with field and value for each fields (default).
-      #        - :array for an array schema, having value for each element matching primitive_classes parameter.
-      #        - :dictionary for open symbolic key and value having value for each element matching primitive_classes parameter.
-      #        - :primitive for a schema with a single primitive value.
-      # @param primitive_classes [Array<Class>] The primitive classes of the schema, if type is :array, :dictionary.or :primitive.
+      #        - :array for an array schema, having value for each element matching scalar_classes parameter.
+      #        - :dictionary for open symbolic key and value having value for each element matching scalar_classes parameter.
+      #        - :scalar for a schema with a single scalar value.
+      # @param scalar_classes [Array<Class>] The scalar classes of the schema, if type is :array, :dictionary.or :scalar.
       def initialize(
         fields: [],
         type: :hash,
-        primitive_classes: nil,
+        scalar_classes: nil,
         post_processors: IDENTITY_PP.dup,
         &block
       )
         @fields            = fields
         @post_processors   = post_processors
         @type              = type
-        @primitive_classes = primitive_classes
+        @scalar_classes = scalar_classes
 
         instance_eval(&block) if block_given?
       end
@@ -56,7 +56,7 @@ module Verse
           Base.new(
             fields: from.fields&.map(&:dup),
             type: from.type,
-            primitive_classes: from.primitive_classes,
+            scalar_classes: from.scalar_classes,
             post_processors: from.post_processors.dup,
             &block
           )
@@ -65,26 +65,24 @@ module Verse
         end
       end
 
-      def self.define_array(primitive_classes, &block)
+      def self.define_array(scalar_classes)
         Base.new(
           type: :array,
-          primitive_classes:,
-          &block
+          scalar_classes:
         )
       end
 
-      def self.define_dictionary(primitive_classes, &block)
+      def self.define_dictionary(scalar_classes)
         Base.new(
           type: :dictionary,
-          primitive_classes:,
-          &block
+          scalar_classes:
         )
       end
 
-      def self.define_primitive(primitive_class, &block)
+      def self.define_scalar(scalar_classes)
         Base.new(
-          type: :primitive,
-          primitive_classes: [primitive_class],
+          type: :scalar,
+          scalar_classes:,
         )
       end
 
@@ -145,8 +143,8 @@ module Verse
           validate_array(input, error_builder, locals)
         when :dictionary
           validate_dictionary(input, error_builder, locals)
-        when :primitive
-          validate_primitive(input, error_builder, locals)
+        when :scalar
+          validate_scalar(input, error_builder, locals)
         when :hash
           validate_hash(input, error_builder, locals)
         end
@@ -209,7 +207,7 @@ module Verse
           coalesced_value =
             Coalescer.transform(
               value,
-              @primitive_classes,
+              @scalar_classes,
               @opts,
               locals:
             )
@@ -242,7 +240,7 @@ module Verse
           coalesced_value =
             Coalescer.transform(
               value,
-              @primitive_classes,
+              @scalar_classes,
               @opts,
               locals:
             )
@@ -262,14 +260,14 @@ module Verse
         Result.new(output, error_builder.errors)
       end
 
-      def validate_primitive(input, error_builder, locals)
+      def validate_scalar(input, error_builder, locals)
         coalesced_value = nil
 
         begin
           coalesced_value =
             Coalescer.transform(
               input,
-              @primitive_classes,
+              @scalar_classes,
               @opts,
               locals:
             )
@@ -279,7 +277,7 @@ module Verse
             coalesced_value = coalesced_value.value
           end
         rescue Coalescer::Error => e
-          error_builder.add(index, e.message, **locals)
+          error_builder.add(nil, e.message, **locals)
         end
 
         Result.new(coalesced_value, error_builder.errors)
