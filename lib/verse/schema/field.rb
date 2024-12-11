@@ -200,8 +200,9 @@ module Verse
       # @param [Proc] block the block to call to transform the value
       # @return [self]
       def transform(&block)
-        callback = proc do |value, name, error_builder|
+        callback = proc do |value, _name, error_builder|
           next self if error_builder.errors.any?
+
           instance_exec(value, error_builder, &block)
         end
 
@@ -278,13 +279,13 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          if @post_processors
-            output[@name] = @post_processors.call(
-              coalesced_value, @name, error_builder, **locals
-            )
-          else
-            output[@name] = coalesced_value
-          end
+          output[@name] = if @post_processors
+                            @post_processors.call(
+                              coalesced_value, @name, error_builder, **locals
+                            )
+                          else
+                            coalesced_value
+                          end
 
         end
       rescue Coalescer::Error => e

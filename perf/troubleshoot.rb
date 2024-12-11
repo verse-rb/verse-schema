@@ -1,4 +1,6 @@
-#Troubleshoot performances
+# frozen_string_literal: true
+
+# Troubleshoot performances
 require "bundler"
 
 Bundler.require
@@ -47,17 +49,15 @@ end
 require "ruby-prof"
 
 def run_profiler
-
   RubyProf.start
 
   100_000.times do
-    ShiftEntry.new({"to"=>"2024-10-16 12:00:00",
-      "from"=>"2024-10-16 04:00:00",
-      "details"=>"Worked on the project",
-      "billable"=>true,
-      "productive"=>true,
-      "project_id"=>1
-    })
+    ShiftEntry.new({ "to" => "2024-10-16 12:00:00",
+                     "from" => "2024-10-16 04:00:00",
+                     "details" => "Worked on the project",
+                     "billable" => true,
+                     "productive" => true,
+                     "project_id" => 1 })
   end
 
   # Stop profiling
@@ -65,17 +65,16 @@ def run_profiler
 
   # Print a flat report to the console (or choose other report formats)
   printer = RubyProf::GraphPrinter.new(result)
-  printer.print(STDOUT, min_percent: 0.1)  # Adjust min_percent to filter results
+  printer.print($stdout, min_percent: 0.1) # Adjust min_percent to filter results
 
   time = Time.now.to_f
   10_000.times do
-    ShiftEntry.new({"to"=>"2024-10-16 12:00:00",
-      "from"=>"2024-10-16 04:00:00",
-      "details"=>"Worked on the project",
-      "billable"=>true,
-      "productive"=>true,
-      "project_id"=>1
-    })
+    ShiftEntry.new({ "to" => "2024-10-16 12:00:00",
+                     "from" => "2024-10-16 04:00:00",
+                     "details" => "Worked on the project",
+                     "billable" => true,
+                     "productive" => true,
+                     "project_id" => 1 })
   end
   puts "Time: #{1000 * (Time.now.to_f - time)}ms"
 end

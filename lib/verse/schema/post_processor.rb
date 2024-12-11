@@ -5,7 +5,7 @@ module Verse
     # Post type validation / coercion processor. Can act as semantic rule or
     # as a transformer.
     class PostProcessor
-      EndOfChain = :end_of_chain
+      END_OF_CHAIN = :end_of_chain
 
       attr_reader :next, :opts, :locals
 
@@ -23,7 +23,7 @@ module Verse
       end
 
       def stop
-        throw EndOfChain, EndOfChain
+        throw END_OF_CHAIN, END_OF_CHAIN
       end
 
       def dup
@@ -37,12 +37,12 @@ module Verse
       end
 
       def call(value, key, error_builder, **locals)
-        output = catch(EndOfChain) do
+        output = catch(END_OF_CHAIN) do
           @locals = locals
           instance_exec(value, error_builder, @opts, @locals, &@block)
         end
 
-        return value if output == EndOfChain
+        return value if output == END_OF_CHAIN
 
         has_error = error_builder.errors.any?
 

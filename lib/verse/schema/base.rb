@@ -9,11 +9,28 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Base
-      attr_reader :fields, :post_processors
+      attr_reader :fields, :post_processors, :type, :primitive_classes
 
-      def initialize(fields: [], post_processors: IDENTITY_PP.dup, &block)
-        @fields = fields
-        @post_processors = post_processors
+      # Initialize a new schema.
+      # @param fields [Array<Field>] The fields of the schema.
+      # @param type [Symbol] The type of the schema:
+      #        - :hash simple hash schema, with field and value for each fields (default).
+      #        - :array for an array schema, having value for each element matching primitive_classes parameter.
+      #        - :dictionary for open symbolic key and value having value for each element matching primitive_classes parameter.
+      #        - :primitive for a schema with a single primitive value.
+      # @param primitive_classes [Array<Class>] The primitive classes of the schema, if type is :array, :dictionary.or :primitive.
+      def initialize(
+        fields: [],
+        type: :hash,
+        primitive_classes: nil,
+        post_processors: IDENTITY_PP.dup,
+        &block
+      )
+        @fields            = fields
+        @post_processors   = post_processors
+        @type              = type
+        @primitive_classes = primitive_classes
+
         instance_eval(&block) if block_given?
       end
 
@@ -37,7 +54,9 @@ module Verse
       def self.define(from = nil, &block)
         if from
           Base.new(
-            fields: from.fields.map(&:dup),
+            fields: from.fields&.map(&:dup),
+            type: from.type,
+            primitive_classes: from.primitive_classes,
             post_processors: from.post_processors.dup,
             &block
           )
@@ -46,8 +65,31 @@ module Verse
         end
       end
 
+      def self.define_array(*primitive_classes, &block)
+        Base.new(
+          type: :array,
+          primitive_classes:,
+          &block
+        )
+      end
+
+      def self.define_dictionary(*primitive_classes, &block)
+        Base.new(
+          type: :dictionary,
+          primitive_classes:,
+          &block
+        )
+      end
+
+      def self.define_primitive(primitive_class, &block)
+        Base.new(
+          type: :primitive,
+          primitive_classes: [primitive_class],
+        )
+      end
+
       def define(from = nil, &block)
-        Verse::Schema::Base.define(from, &block)
+        self.class.define(from, &block)
       end
 
       def transform(&block)
@@ -96,9 +138,27 @@ module Verse
             ErrorBuilder.new
           end
 
-        output = {}
-
         locals[:__path__] ||= []
+
+        case type
+        when :array
+          validate_array(input, error_builder, locals)
+        when :dictionary
+          validate_dictionary(input, error_builder, locals)
+        when :primitive
+          validate_primitive(input, error_builder, locals)
+        when :hash
+          validate_hash(input, error_builder, locals)
+        end
+      end
+
+      protected def validate_hash(input, error_builder, locals)
+        unless input.is_a?(Hash)
+          error_builder.add(nil, "must be a hash")
+          return Result.new({}, error_builder.errors)
+        end
+
+        output = {}
 
         @fields.each do |field|
           key_s = field.key.to_s
@@ -135,12 +195,96 @@ module Verse
         Result.new(output, error_builder.errors)
       end
 
+      protected def validate_dictionary(input, error_builder, locals)
+        unless input.is_a?(Hash)
+          error_builder.add(nil, "must be a hash")
+          return Result.new(output, error_builder.errors)
+        end
+
+        output = {}
+
+        input.each do |key, value|
+          locals[:__path__].push(key)
+
+          coalesced_value =
+            Coalescer.transform(
+              value,
+              @primitive_classes,
+              @opts,
+              locals:
+            )
+
+          if coalesced_value.is_a?(Result)
+            error_builder.combine(key, coalesced_value.errors)
+            coalesced_value = coalesced_value.value
+          end
+
+          Result.new(output, error_builder.errors)
+
+          locals[:__path__].pop
+        end
+      end
+
+      def validate_array(input, error_builder, locals)
+        unless input.is_a?(Array)
+          error_builder.add(nil, "must be an array")
+          return Result.new(output, error_builder.errors)
+        end
+
+        output = []
+
+        input.each_with_index do |value, index|
+          locals[:__path__].push(index)
+
+          coalesced_value =
+            Coalescer.transform(
+              value,
+              @primitive_classes,
+              @opts,
+              locals:
+            )
+
+          if coalesced_value.is_a?(Result)
+            error_builder.combine(index, coalesced_value.errors)
+            coalesced_value = coalesced_value.value
+          end
+
+          output << coalesced_value
+
+          locals[:__path__].pop
+        end
+
+        Result.new(output, error_builder.errors)
+      end
+
+      def validate_primitive(input, error_builder, locals)
+        coalesced_value =
+          Coalescer.transform(
+            input,
+            @primitive_classes,
+            @opts,
+            locals:
+          )
+
+        if coalesced_value.is_a?(Result)
+          error_builder.combine(nil, coalesced_value.errors)
+          coalesced_value = coalesced_value.value
+        end
+
+        Result.new(coalesced_value, error_builder.errors)
+      end
+
       def dup
-        Base.new(fields: @fields.map(&:dup), post_processors: @post_processors.dup)
+        Base.new(
+          fields: @fields.map(&:dup),
+          post_processors: @post_processors.dup
+        )
       end
 
       def inherit?(parent_schema)
-        parent_schema.is_a?(Base) && parent_schema.fields.all? { |parent_field|
+        parent_schema.is_a?(Base) &&
+          parent_schema
+        parent_schema.fields.all? { |parent_field|
           child_field = @fields.find { |f2| f2.name == parent_field.name }
           child_field&.inherit?(parent_field)
         }
@@ -208,13 +352,58 @@ module Verse
           @dataclass ||= Data.define(
             *fields.map(&:name)
           ) do
-            previous_method = singleton_method(:new)
+            bare_new = singleton_method(:new)
 
             define_singleton_method(:from_raw) do |hash|
               # Set optional unset fields to `nil`
               (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
 
-              previous_method.call(**hash)
+              bare_new.call(**hash)
+            end
+
+            define_singleton_method(:unvalidated_new) do |value|
+              schema.fields.each do |f|
+                name = f.name
+
+                # Prevent issue with optional fields
+                # and required fields in Data structure
+                if !value.key?(name)
+                  value[name] = nil
+                  next
+                end
+
+                data = value[name]
+
+                next unless data
+
+                opts = f.opts
+
+                if opt_schema = opts[:schema]
+                  if data.is_a?(Hash)
+                    value[name] = opt_schema.dataclass.unvalidated_new(data)
+                  end
+                elsif (of = opts[:of]).is_a?(Base)
+                  if f.type == Array
+                    value[name] = data.map do |x|
+                      if x.is_a?(Hash)
+                        of.dataclass.unvalidated_new(x)
+                      else
+                        x
+                      end
+                    end
+                  elsif f.type == Hash && data.is_a?(Hash)
+                    value[name] = data.transform_values do |v|
+                      if v.is_a?(Hash)
+                        of.dataclass.unvalidated_new(v)
+                      else
+                        v
+                      end
+                    end
+                  end
+                end
+              end
+
+              bare_new.call(**value)
             end
 
             define_singleton_method(:new) do |*args, **hash|
@@ -238,48 +427,7 @@ module Verse
 
               value = result.value
 
-              schema.fields.each do |f|
-                name = f.name
-
-                # Prevent issue with optional fields
-                # and required fields in Data structure
-                if !value.key?(name)
-                  value[name] = nil
-                  next
-                end
-
-                data = value[name]
-
-                next unless data
-
-                opts = f.opts
-
-                if opt_schema = opts[:schema]
-                  if data.is_a?(Hash)
-                    value[name] = opt_schema.dataclass.from_raw(data)
-                  end
-                elsif (of = opts[:of]).is_a?(Base)
-                  if f.type == Array
-                    value[name] = data.map do |x|
-                      if x.is_a?(Hash)
-                        of.dataclass.from_raw(x)
-                      else
-                        x
-                      end
-                    end
-                  elsif f.type == Hash && data.is_a?(Hash)
-                    value[name] = data.transform_values do |v|
-                      if v.is_a?(Hash)
-                        of.dataclass.from_raw(v)
-                      else
-                        v
-                      end
-                    end
-                  end
-                end
-              end
-
-              previous_method.call(**value)
+              unvalidated_new(value)
             end
 
             class_eval(&block) if block_given?

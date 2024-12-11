@@ -16,6 +16,15 @@ module Verse
       Verse::Schema::Base.define(from, &block)
     end
 
+    # Define the schema as an array of values
+    def array(of = nil, &block)
+      Verse::Schema::Base.array(of, &block)
+    end
+
+    def dictionary(of = nil, &block)
+      Verse::Schema::Base.dictionary(of, &block)
+    end
+
     def empty
       @empty ||= begin
         empty_schema = Verse::Schema.define

@@ -1080,7 +1080,6 @@ RSpec.describe Verse::Schema do
             }
           }
         }
-
       )
 
       expect(result.success?).to be(false)
