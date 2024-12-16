@@ -194,12 +194,12 @@ module Verse
       end
 
       protected def validate_dictionary(input, error_builder, locals)
+        output = {}
+
         unless input.is_a?(Hash)
           error_builder.add(nil, "must be a hash")
           return Result.new(output, error_builder.errors)
         end
-
-        output = {}
 
         input.each do |key, value|
           locals[:__path__].push(key)
@@ -227,12 +227,12 @@ module Verse
       end
 
       def validate_array(input, error_builder, locals)
+        output = []
+
         unless input.is_a?(Array)
           error_builder.add(nil, "must be an array")
           return Result.new(output, error_builder.errors)
         end
-
-        output = []
 
         input.each_with_index do |value, index|
           locals[:__path__].push(index)
