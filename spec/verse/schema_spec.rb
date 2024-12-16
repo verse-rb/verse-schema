@@ -1217,6 +1217,35 @@ RSpec.describe Verse::Schema do
         nil => ["invalid cast"]
       })
     end
+  end
 
+  context "multiple type of schema" do
+    it "validates" do
+      schema = Verse::Schema.define do
+        field(
+          :sub_field, Verse::Schema.dictionary(
+            Verse::Schema.array(
+              String
+            )
+          )
+        )
+      end
+
+      result = schema.validate(
+        {
+          sub_field: {
+            "key1" => ["a", "b"]
+          }
+        }
+      )
+      expect(result.success?).to be(true)
+      expect(result.value).to eq(
+        {
+          sub_field: {
+            key1: ["a", "b"]
+          }
+        }
+      )
+    end
   end
 end

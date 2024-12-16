@@ -262,13 +262,9 @@ module Verse
       # :nodoc:
       def apply(value, output, error_builder, locals)
         if @type.is_a?(Base)
-          if value.is_a?(Hash)
-            error_builder.context(@name) do |error_builder|
-              result = @type.validate(value, error_builder:, locals:)
-              output[@name] = result.value
-            end
-          else
-            error_builder.add(@name, "hash expected")
+          error_builder.context(@name) do |error_builder|
+            result = @type.validate(value, error_builder:, locals:)
+            output[@name] = result.value
           end
         else
           coalesced_value =

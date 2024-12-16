@@ -23,7 +23,7 @@ module Verse
         fields: [],
         type: :hash,
         scalar_classes: nil,
-        post_processors: IDENTITY_PP.dup,
+        post_processors: nil,
         &block
       )
         @fields            = fields
@@ -35,6 +35,7 @@ module Verse
       end
 
       def rule(fields = nil, message = "rule failed", &block)
+        @post_processors ||= IDENTITY_PP.dup
         @post_processors.attach(
           PostProcessor.new do |value, error|
             case block.arity
@@ -57,7 +58,7 @@ module Verse
             fields: from.fields&.map(&:dup),
             type: from.type,
             scalar_classes: from.scalar_classes,
-            post_processors: from.post_processors.dup,
+            post_processors: from.post_processors&.dup,
             &block
           )
         else
@@ -96,6 +97,7 @@ module Verse
           instance_exec(value, error_builder, &block)
         end
 
+        @post_processors ||= IDENTITY_PP.dup
         @post_processors.attach(
           PostProcessor.new(&callback)
         )
@@ -188,7 +190,9 @@ module Verse
           end
         end
 
-        output = @post_processors.call(output, nil, error_builder, **locals) if error_builder.errors.empty?
+        if @post_processors
+          output = @post_processors.call(output, nil, error_builder, **locals) if error_builder.errors.empty?
+        end
 
         Result.new(output, error_builder.errors)
       end
@@ -217,7 +221,7 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          output[key] = coalesced_value
+          output[key.to_sym] = coalesced_value
           locals[:__path__].pop
         rescue Coalescer::Error => e
           error_builder.add(key, e.message, **locals)
@@ -286,7 +290,7 @@ module Verse
       def dup
         Base.new(
           fields: @fields.map(&:dup),
-          post_processors: @post_processors.dup
+          post_processors: @post_processors&.dup
         )
       end
 
