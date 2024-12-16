@@ -8,14 +8,15 @@ module Verse
       @mapping = {}
 
       DEFAULT_MAPPER = lambda do |type|
-        case type
-        when Base
+        if type == Base
+          proc do |value, opts, locals:|
+            opts[:schema].validate(value, locals:)
+          end
+        elsif type.is_a?(Base)
           proc do |value, _opts, locals:|
-            raise Error, "hash expected" unless value.is_a?(Hash)
-
             type.validate(value, locals:)
           end
-        when Class
+        elsif type.is_a?(Class)
           proc do |value|
             next value if value.is_a?(type)
 

@@ -19,7 +19,7 @@ module Verse
         @post_processors = post_processors
 
         if type.is_a?(Schema::Base)
-          @type = Hash
+          @type = Schema::Base
           @opts[:schema] = type
         else
           @type = type
@@ -44,7 +44,7 @@ module Verse
           end
         end
 
-        return if [Hash, Array].include?(@type)
+        return if [Hash, Array, Schema::Base].include?(@type)
         if @opts[:of]
           raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
         end

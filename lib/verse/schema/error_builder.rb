@@ -29,7 +29,9 @@ module Verse
         when Array
           keys.each { |key| add(key, message, **locals) }
         else
-          real_key = [@root, keys].compact.join(".").to_sym
+          path = [@root, keys].compact
+
+          real_key = path.any? ? path.join(".").to_sym : nil
 
           message %= locals if locals.any?
 

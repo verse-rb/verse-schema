@@ -347,7 +347,7 @@ RSpec.describe Verse::Schema do
         expect(result.success?).to be(false)
         expect(result.errors).to eq(
           {
-            "data.1": ["hash expected"]
+            "data.1": ["must be a hash"]
           }
         )
       end
@@ -1158,7 +1158,7 @@ RSpec.describe Verse::Schema do
       expect(result.success?).to be(false)
       expect(result.errors).to eq(
         {
-          "b": ["invalid cast"]
+          "b": ["must be a hash"]
         }
       )
     end
@@ -1193,7 +1193,7 @@ RSpec.describe Verse::Schema do
       expect(result.success?).to be(false)
       expect(result.errors).to eq(
         {
-          "1": ["invalid cast"]
+          "1": ["must be a hash"]
         }
       )
     end
@@ -1214,7 +1214,7 @@ RSpec.describe Verse::Schema do
       result = Examples::SCHEMA_SCALAR.validate([])
       expect(result.success?).to be(false)
       expect(result.errors).to eq({
-        :"" => ["invalid cast"]
+        nil => ["invalid cast"]
       })
     end
 
