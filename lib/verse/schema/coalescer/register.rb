@@ -164,7 +164,7 @@ module Verse
         raise Coalescer::Error, "must be nil"
       end
 
-      register(TrueClass, true, false) do |value|
+      register(TrueClass, FalseClass, true, false) do |value|
         case value
         when TrueClass, FalseClass
           value
