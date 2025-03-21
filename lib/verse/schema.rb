@@ -18,15 +18,15 @@ module Verse
 
     # Define the schema as an array of values
     def array(*types)
-      Verse::Schema::Base.define_array(types)
+      Verse::Schema::Base.define_array(*types)
     end
 
     def dictionary(*types)
-      Verse::Schema::Base.define_dictionary(types)
+      Verse::Schema::Base.define_dictionary(*types)
     end
 
     def scalar(*types)
-      Verse::Schema::Base.define_scalar(types)
+      Verse::Schema::Base.define_scalar(*types)
     end
 
     def empty

@@ -54,7 +54,7 @@ module Verse
 
       def self.define(from = nil, &block)
         if from
-          Base.new(
+          new(
             fields: from.fields&.map(&:dup),
             type: from.type,
             scalar_classes: from.scalar_classes,
@@ -62,26 +62,26 @@ module Verse
             &block
           )
         else
-          Base.new(&block)
+          new(&block)
         end
       end
 
-      def self.define_array(scalar_classes)
-        Base.new(
+      def self.define_array(*scalar_classes)
+        new(
           type: :array,
           scalar_classes:
         )
       end
 
-      def self.define_dictionary(scalar_classes)
-        Base.new(
+      def self.define_dictionary(*scalar_classes)
+        new(
           type: :dictionary,
           scalar_classes:
         )
       end
 
-      def self.define_scalar(scalar_classes)
-        Base.new(
+      def self.define_scalar(*scalar_classes)
+        new(
           type: :scalar,
           scalar_classes:,
         )
