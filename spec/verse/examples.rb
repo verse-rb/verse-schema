@@ -256,7 +256,6 @@ module Examples
     field(:content, Hash, of: subschema)
   end
 
-
   ITEM = Verse::Schema.define do
     field(:name, String)
   end

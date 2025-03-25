@@ -18,40 +18,35 @@ module Verse
         # Setup identity processor
         @post_processors = post_processors
 
-        if type.is_a?(Schema::Base)
-          @type = Schema::Base
-          @opts[:schema] = type
-        else
-          @type = type
-        end
+        of_arg = @opts[:of] # For array and dictionary
+        of_arg = [of_arg] unless of_arg.nil? || of_arg.is_a?(Array)
+
+        nested_schema = nil
 
         if block_given?
-          if @opts[:of]
+          if of_arg
             raise ArgumentError, "cannot pass `of` and a block at the same time"
           end
 
-          if @opts[:schema]
-            raise ArgumentError, "cannot pass `schema` and a block at the same time"
-          end
+          # Define sub_schema:
+          nested_schema = Verse::Schema.define(&block)
+        end
 
-          if [Hash, Object].include?(type) # Object when type is ommited.
-            @type = Hash
-            @opts[:schema] = Schema.define(&block)
-          elsif type == Array
-            @opts[:of] = Schema.define(&block)
-          else
-            raise ArgumentError, "block is only allowed with Hash or Array type"
+        if [Hash, Object].include?(type)
+          if of_arg # dictionary
+            @type = Schema.dictionary(*of_arg)
+          elsif nested_schema
+            @type = nested_schema
+          end
+        elsif type == Array
+          if of_arg
+            @type = Schema.array(*of_arg)
+          elsif nested_schema
+            @type = Schema.array(nested_schema)
           end
         end
 
-        return if [Hash, Array, Schema::Base].include?(@type)
-        if @opts[:of]
-          raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
-        end
-
-        return unless @opts[:schema]
-
-        raise ArgumentError, "use `of` only with Array or Hash type but `#{@type}` given"
+        @type ||= type
       end
 
       option :key, default: -> { @name }
@@ -144,6 +139,14 @@ module Verse
         !!@opts[:optional]
       end
 
+      def array?
+        @type == Array || ( @type.is_a?(Schema::Base) && @type.type == :array )
+      end
+
+      def dictionary?
+        @type.is_a?(Schema::Base) && @type.type == :dictionary
+      end
+
       # Add a rule to the field. A rule is a block that will be called
       # with the value of the field. If the block returns false, an error
       # will be added to the error builder.
@@ -165,7 +168,9 @@ module Verse
               when 2
                 error.add(opts[:key], rule, **locals) unless instance_exec(value, error, &block)
               else
+                # :nocov:
                 raise ArgumentError, "invalid block arity"
+                # :nocov:
               end
 
               value
@@ -174,7 +179,9 @@ module Verse
             rule.opts[:key] = key
             rule
           else
+            # :nocov:
             raise ArgumentError, "invalid rule type #{rule}"
+            # :nocov:
           end
 
         attach_post_processor(rule_processor)
@@ -217,7 +224,9 @@ module Verse
         when Array
           # @type must be a superset of parent.
           # not easy to do, FIXME
+          # :nocov:
           raise NotImplementedError, "inheritance check with multiple type field not supported yet."
+          # :nocov:
         else
           # wrong type
           return false unless @type <= parent_field.type
@@ -248,17 +257,6 @@ module Verse
 
       alias_method :<, :inherit?
 
-      def explain(indent: "", output: String.new)
-        default = @has_default ? " = #{default}" : ""
-        optional = @opts[:optional] ? "?" : ""
-
-        output << "#{indent}#{name}#{optional} : "
-        explain_type(type, indent:, output:)
-        output << "#{default}\n"
-
-        output
-      end
-
       # :nodoc:
       def apply(value, output, error_builder, locals)
         if @type.is_a?(Base)
@@ -286,43 +284,6 @@ module Verse
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message, **locals)
-      end
-
-      private
-
-      def explain_type(type, indent:, output:)
-        if type == Hash
-          if opts[:schema]
-            opts[:schema].explain(indent: "#{indent}  ", output:)
-            output << indent.to_s
-          elsif opts[:of] && opts[:of] != Object
-            output << "Dictionary<Symbol,\n"
-            explain_type(opts[:of], indent: "#{indent}  ", output:)
-            output << "#{indent}>"
-          else
-            output << "Hash"
-          end
-        elsif type == Array
-          if opts[:of] && opts[:of] != Object
-            output << "Array<\n"
-            explain_type(opts[:of], indent: "#{indent}  ", output:)
-            output << "#{indent}>"
-          else
-            output << "Array"
-          end
-        elsif type.is_a?(Base)
-          type.explain(indent: "#{indent}  ", output:)
-        elsif type.is_a?(Array)
-          output << "Union<\n"
-          type.each_with_index do |t, idx|
-            output << "#{indent},\n" unless idx == 0
-            explain_type(t, indent: "#{indent}  ", output:)
-          end
-          output << "#{indent}>"
-
-        else
-          output << "#{indent}#{type}\n"
-        end
       end
     end
   end

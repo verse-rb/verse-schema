@@ -5,6 +5,11 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in verse-schema.gemspec
 gemspec
 
+# Development dependencies
+group :development do
+  gem "prism", "~> 0.19.0", require: false
+end
+
 gem "rake", "~> 13.0"
 
 gem "bootsnap", "~> 1.16"

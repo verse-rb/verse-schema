@@ -40,6 +40,8 @@ module Verse
           if type.is_a?(Array)
             converted = nil
 
+            last_error_message = nil
+
             found = false
             type.each do |t|
               converted = @mapping.fetch(t) do
@@ -51,13 +53,14 @@ module Verse
                 found = true
                 break
               end
-            rescue StandardError
+            rescue StandardError => e
+              last_error_message = e.message
               # next
             end
 
             return converted if found || converted.is_a?(Result)
 
-            raise Error, "invalid cast"
+            raise Error, (last_error_message || "invalid cast")
           else
             @mapping.fetch(type) do
               DEFAULT_MAPPER.call(type)

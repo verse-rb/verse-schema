@@ -6,6 +6,20 @@ require "time"
 module Verse
   module Schema
     module Coalescer
+      # open hash, deep symbolize keys
+      def self.deep_symbolize_keys(value)
+        case value
+        when Array
+          value.map{ |x| deep_symbolize_keys(x) }
+        when Hash
+          value.map do |k, v|
+            [k.to_sym, deep_symbolize_keys(v)]
+          end.to_h
+        else
+          value
+        end
+      end
+
       register(String) do |value|
         case value
         when String
@@ -70,92 +84,18 @@ module Verse
         raise Coalescer::Error, "must be a date"
       end
 
-      register(Hash) do |value, opts, locals:|
+      register(Hash) do |value|
+        # Open hash without contract.
+
         raise Coalescer::Error, "must be a hash" unless value.is_a?(Hash)
 
-        if opts[:schema]
-          opts[:schema].validate(value, locals:)
-        elsif opts[:of]
-          # open hash with validation on keys:
-          error_builder = Verse::Schema::ErrorBuilder.new
-
-          output = value.inject({}) do |h, (k, v)|
-            locals[:__path__] ||= []
-            begin
-              k = k.to_sym
-              locals[:__path__].push(k)
-
-              field = Coalescer.transform(v, opts[:of], locals:)
-
-              if field.is_a?(Result)
-                error_builder.combine(k, field.errors)
-                h[k] = field.value
-              else
-                h[k] = field
-              end
-            ensure
-              locals[:__path__].pop
-            end
-
-            h
-          rescue Coalescer::Error => e
-            error_builder.add(k, e.message)
-            h
-          end
-
-          Result.new(output, error_builder.errors)
-        else
-          # open hash, deep symbolize keys
-          deep_symbolize_keys = ->(value) do
-            case value
-            when Array
-              value.map{ |x| deep_symbolize_keys.call(x) }
-            when Hash
-              value.map do |k, v|
-                [k.to_sym, deep_symbolize_keys.call(v)]
-              end.to_h
-            else
-              value
-            end
-          end
-
-          next deep_symbolize_keys.call(value)
-        end
+        Coalescer.deep_symbolize_keys(value)
       end
 
-      register(Array) do |value, opts, locals:|
-        case value
-        when Array
-          if opts[:of].nil?
-            next value # open array.
-          end
+      register(Array) do |value|
+        raise Coalescer::Error, "must be a array" unless value.is_a?(Array)
 
-          error_builder = Verse::Schema::ErrorBuilder.new
-
-          output = value.map.with_index do |v, idx|
-            locals[:__path__] ||= []
-            begin
-              locals[:__path__].push(idx)
-
-              field = Coalescer.transform(v, opts[:of], {})
-
-              if field.is_a?(Result)
-                error_builder.combine(idx, field.errors)
-                field.value
-              else
-                field
-              end
-            ensure
-              locals[:__path__].pop
-            end
-          rescue Coalescer::Error => e
-            error_builder.add(idx, e.message)
-          end
-
-          Result.new(output, error_builder.errors)
-        else
-          raise Coalescer::Error, "must be a array"
-        end
+        value
       end
 
       register(nil, NilClass) do |value|

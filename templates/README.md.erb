@@ -1,0 +1,33 @@
+# Verse::Schema
+
+## Summary
+
+Verse::Schema is a Ruby gem that provides a DSL for data validation and coercion.
+
+It is designed to be used in a context where you need to validate and coerce data coming from external sources (e.g. HTTP requests, database, etc...).
+
+Verse was initially using [dry-validation](https://dry-rb.org/gems/dry-validation/) for this purpose, but we found it too complex to use and to extend. Autodocumentation was almost impossible, and the different concepts (Schema, Params, Contract...) was not really clear in our opinion.
+
+## Installation
+
+Add this line to your application's Gemfile:
+
+```ruby
+  gem 'verse-schema'
+```
+
+## Usage
+
+<% examples.each do |section_name, section_examples| %>
+### <%= section_name %>
+
+<% section_examples.each do |example| %>
+```ruby
+<%= example %>
+```
+<% end %>
+<% end %>
+
+## Contributing
+
+Bug reports and pull requests are welcome on GitHub at https://github.com/verse-rb/verse-schema.

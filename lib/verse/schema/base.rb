@@ -44,7 +44,9 @@ module Verse
             when 2
               error.add(fields, message) unless instance_exec(value, error, &block)
             else
+              # :nocov:
               raise ArgumentError, "invalid block arity"
+              # :nocov:
             end
 
             value
@@ -152,84 +154,6 @@ module Verse
         end
       end
 
-      protected def validate_hash(input, error_builder, locals)
-        unless input.is_a?(Hash)
-          error_builder.add(nil, "must be a hash")
-          return Result.new({}, error_builder.errors)
-        end
-
-        output = {}
-
-        @fields.each do |field|
-          key_s = field.key.to_s
-          key_sym = key_s.to_sym
-
-          exists = true
-          value = input.fetch(key_s) { input.fetch(key_sym) { exists = false } }
-
-          begin
-            locals[:__path__].push(key_sym)
-
-            if exists
-              field.apply(value, output, error_builder, locals)
-            elsif field.default?
-              field.apply(field.default, output, error_builder, locals)
-            elsif field.required?
-              error_builder.add(field.key, "is required")
-            end
-          ensure
-            # This is more performant than creating new array everytime,
-            # but as in example, any storage of the array must be duplicated.
-            locals[:__path__].pop
-          end
-        end
-
-        if @extra_fields
-          input.each do |key, value|
-            output[key.to_sym] = value unless @fields.any? { |field| field.key.to_s == key.to_s }
-          end
-        end
-
-        if @post_processors
-          output = @post_processors.call(output, nil, error_builder, **locals) if error_builder.errors.empty?
-        end
-
-        Result.new(output, error_builder.errors)
-      end
-
-      protected def validate_dictionary(input, error_builder, locals)
-        output = {}
-
-        unless input.is_a?(Hash)
-          error_builder.add(nil, "must be a hash")
-          return Result.new(output, error_builder.errors)
-        end
-
-        input.each do |key, value|
-          locals[:__path__].push(key)
-
-          coalesced_value =
-            Coalescer.transform(
-              value,
-              @scalar_classes,
-              @opts,
-              locals:
-            )
-
-          if coalesced_value.is_a?(Result)
-            error_builder.combine(key, coalesced_value.errors)
-            coalesced_value = coalesced_value.value
-          end
-
-          output[key.to_sym] = coalesced_value
-          locals[:__path__].pop
-        rescue Coalescer::Error => e
-          error_builder.add(key, e.message, **locals)
-        end
-
-        Result.new(output, error_builder.errors)
-      end
-
       def validate_array(input, error_builder, locals)
         output = []
 
@@ -295,18 +219,20 @@ module Verse
       end
 
       def inherit?(parent_schema)
+        # Check if parent_schema is a Base and if all parent fields are present in this schema
         parent_schema.is_a?(Base) &&
-          parent_schema
-        parent_schema.fields.all? { |parent_field|
-          child_field = @fields.find { |f2| f2.name == parent_field.name }
-          child_field&.inherit?(parent_field)
-        }
+          parent_schema.fields.all? { |parent_field|
+            child_field = @fields.find { |f2| f2.name == parent_field.name }
+            child_field&.inherit?(parent_field)
+          }
       end
-
-      alias_method :<, :inherit?
 
       def <=(other)
         other == self || inherit?(other)
+      end
+
+      def <(other)
+        other != self && inherit?(other)
       end
 
       # rubocop:disable Style/InverseMethods
@@ -389,30 +315,10 @@ module Verse
 
                 next unless data
 
-                opts = f.opts
+                f.opts
 
-                if opt_schema = opts[:schema]
-                  if data.is_a?(Hash)
-                    value[name] = opt_schema.dataclass.unvalidated_new(data)
-                  end
-                elsif (of = opts[:of]).is_a?(Base)
-                  if f.type == Array
-                    value[name] = data.map do |x|
-                      if x.is_a?(Hash)
-                        of.dataclass.unvalidated_new(x)
-                      else
-                        x
-                      end
-                    end
-                  elsif f.type == Hash && data.is_a?(Hash)
-                    value[name] = data.transform_values do |v|
-                      if v.is_a?(Hash)
-                        of.dataclass.unvalidated_new(v)
-                      else
-                        v
-                      end
-                    end
-                  end
+                if f.type.is_a?(Schema::Base)
+                  value[name] = f.type.dataclass.unvalidated_new(data)
                 end
               end
 
@@ -463,6 +369,87 @@ module Verse
         output << indent << "}\n"
 
         output
+      end
+
+      protected
+
+      def validate_hash(input, error_builder, locals)
+        unless input.is_a?(Hash)
+          error_builder.add(nil, "must be a hash")
+          return Result.new({}, error_builder.errors)
+        end
+
+        output = {}
+
+        @fields.each do |field|
+          key_s = field.key.to_s
+          key_sym = key_s.to_sym
+
+          exists = true
+          value = input.fetch(key_s) { input.fetch(key_sym) { exists = false } }
+
+          begin
+            locals[:__path__].push(key_sym)
+
+            if exists
+              field.apply(value, output, error_builder, locals)
+            elsif field.default?
+              field.apply(field.default, output, error_builder, locals)
+            elsif field.required?
+              error_builder.add(field.key, "is required")
+            end
+          ensure
+            # This is more performant than creating new array everytime,
+            # but as in example, any storage of the array must be duplicated.
+            locals[:__path__].pop
+          end
+        end
+
+        if @extra_fields
+          input.each do |key, value|
+            output[key.to_sym] = value unless @fields.any? { |field| field.key.to_s == key.to_s }
+          end
+        end
+
+        if @post_processors && error_builder.errors.empty?
+          output = @post_processors.call(output, nil, error_builder, **locals)
+        end
+
+        Result.new(output, error_builder.errors)
+      end
+
+      def validate_dictionary(input, error_builder, locals)
+        output = {}
+
+        unless input.is_a?(Hash)
+          error_builder.add(nil, "must be a hash")
+          return Result.new(output, error_builder.errors)
+        end
+
+        input.each do |key, value|
+          key_sym = key.to_sym
+          locals[:__path__].push(key_sym)
+
+          coalesced_value =
+            Coalescer.transform(
+              value,
+              @scalar_classes,
+              @opts,
+              locals:
+            )
+
+          if coalesced_value.is_a?(Result)
+            error_builder.combine(key, coalesced_value.errors)
+            coalesced_value = coalesced_value.value
+          end
+
+          output[key.to_sym] = coalesced_value
+          locals[:__path__].pop
+        rescue Coalescer::Error => e
+          error_builder.add(key, e.message, **locals)
+        end
+
+        Result.new(output, error_builder.errors)
       end
     end
   end
