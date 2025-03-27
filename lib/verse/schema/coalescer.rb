@@ -37,34 +37,37 @@ module Verse
         end
 
         def transform(value, type, opts = {}, locals: {})
+          # Cache the mapper for each type to avoid repeated lookups
+          @mapper_cache ||= {}
+
           if type.is_a?(Array)
             converted = nil
-
             last_error_message = nil
-
             found = false
-            type.each do |t|
-              converted = @mapping.fetch(t) do
-                DEFAULT_MAPPER.call(t)
-              end.call(value, opts, locals:)
 
-              if !converted.is_a?(Result) ||
-                 (converted.is_a?(Result) && converted.success?)
-                found = true
-                break
+            type.each do |t|
+              # Use cached mapper if available
+              mapper = @mapper_cache[t] ||= @mapping.fetch(t) { DEFAULT_MAPPER.call(t) }
+
+              begin
+                converted = mapper.call(value, opts, locals: locals)
+
+                # Fast path check for success
+                if !converted.is_a?(Result) || (converted.is_a?(Result) && converted.success?)
+                  found = true
+                  break
+                end
+              rescue StandardError => e
+                last_error_message = e.message
               end
-            rescue StandardError => e
-              last_error_message = e.message
-              # next
             end
 
             return converted if found || converted.is_a?(Result)
-
             raise Error, (last_error_message || "invalid cast")
           else
-            @mapping.fetch(type) do
-              DEFAULT_MAPPER.call(type)
-            end.call(value, opts, locals:)
+            # Use cached mapper if available
+            mapper = @mapper_cache[type] ||= @mapping.fetch(type) { DEFAULT_MAPPER.call(type) }
+            mapper.call(value, opts, locals: locals)
           end
         end
       end

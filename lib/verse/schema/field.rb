@@ -259,31 +259,44 @@ module Verse
 
       # :nodoc:
       def apply(value, output, error_builder, locals)
+        # Fast path for Base type
         if @type.is_a?(Base)
           error_builder.context(@name) do |error_builder|
             result = @type.validate(value, error_builder:, locals:)
             output[@name] = result.value
           end
-        else
-          coalesced_value =
-            Coalescer.transform(value, @type, @opts, locals:)
+          return
+        end
 
-          if coalesced_value.is_a?(Result)
-            error_builder.combine(@name, coalesced_value.errors)
-            coalesced_value = coalesced_value.value
+        # Cache type check for common types to avoid repeated is_a? calls
+        @is_base_type ||= @type.is_a?(Base)
+
+        begin
+          # Direct transformation
+          coalesced_value = Coalescer.transform(value, @type, @opts, locals:)
+
+          # Fast path for non-Result values (most common case)
+          unless coalesced_value.is_a?(Result)
+            output[@name] = if @post_processors
+                              @post_processors.call(coalesced_value, @name, error_builder, **locals)
+                            else
+                              coalesced_value
+                            end
+            return
           end
 
+          # Handle Result values
+          error_builder.combine(@name, coalesced_value.errors)
+          coalesced_value = coalesced_value.value
+
           output[@name] = if @post_processors
-                            @post_processors.call(
-                              coalesced_value, @name, error_builder, **locals
-                            )
+                            @post_processors.call(coalesced_value, @name, error_builder, **locals)
                           else
                             coalesced_value
                           end
-
+        rescue Coalescer::Error => e
+          error_builder.add(@name, e.message, **locals)
         end
-      rescue Coalescer::Error => e
-        error_builder.add(@name, e.message, **locals)
       end
     end
   end
