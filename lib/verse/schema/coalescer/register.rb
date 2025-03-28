@@ -63,29 +63,7 @@ module Verse
         when Time
           value
         when String
-          # Cache the current time to avoid repeated calls
-          @now ||= Time.now
-
-          # Ultra-fast path for ISO8601-like formats (which is what we see in the test)
-          if value.match?(/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}/)
-            begin
-              # Direct substring extraction instead of split+map
-              year = value[0,4].to_i
-              month = value[5,2].to_i
-              day = value[8,2].to_i
-              hour = value[11,2].to_i
-              min = value[14,2].to_i
-              sec = value[17,2].to_i
-
-              # Use Time.utc to ensure consistent timezone behavior
-              Time.utc(year, month, day, hour, min, sec)
-            rescue
-              # Fall back to standard parsing if our fast path fails
-              Time.parse(value)
-            end
-          else
-            Time.parse(value)
-          end
+          Time.parse(value)
         else
           raise Coalescer::Error, "must be a datetime"
         end

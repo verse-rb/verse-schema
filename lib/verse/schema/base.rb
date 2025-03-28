@@ -11,8 +11,6 @@ module Verse
     class Base
       attr_reader :fields, :post_processors, :type, :scalar_classes
 
-      NOT_EXISTS = Object.new.freeze
-
       # Initialize a new schema.
       # @param fields [Array<Field>] The fields of the schema.
       # @param type [Symbol] The type of the schema:
@@ -288,66 +286,70 @@ module Verse
       if RUBY_VERSION >= "3.2.0"
         # Represent a dataclass using schema internally
         def dataclass(&block)
-          @dataclass ||= begin
-            schema = self
+          schema = self
 
-            Data.define(
-              *fields.map(&:name)
-            ) do
-              bare_new = singleton_method(:new)
+          @dataclass ||= Data.define(
+            *fields.map(&:name)
+          ) do
+            bare_new = singleton_method(:new)
 
-              define_singleton_method(:from_raw) do |hash|
-                # Set optional unset fields to `nil`
-                (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
+            define_singleton_method(:from_raw) do |hash|
+              # Set optional unset fields to `nil`
+              (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
 
-                bare_new.call(**hash)
-              end
-
-              define_singleton_method(:unvalidated_new) do |value|
-                schema.fields.each do |f|
-                  name = f.name
-
-                  # Prevent issue with optional fields
-                  # and required fields in Data structure
-                  if value.key?(name)
-                    if f.type.is_a?(Schema::Base)
-                      value[name] = f.type.dataclass.unvalidated_new(value[name])
-                    end
-                  else
-                    value[name] = nil
-                    next
-                  end
-                end
-
-                bare_new.call(**value)
-              end
-
-              define_singleton_method(:new) do |*args, **hash|
-                if args.size > 1
-                  raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
-                end
-
-                if args.size == 1 && !hash.empty?
-                  raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
-                end
-
-                if args.size == 1
-                  hash = args.first
-                end
-
-                result = schema.validate(hash)
-
-                unless result.success?
-                  raise InvalidSchemaError, result.errors
-                end
-
-                value = result.value
-
-                unvalidated_new(value)
-              end
-
-              class_eval(&block) if block_given?
+              bare_new.call(**hash)
             end
+
+            define_singleton_method(:unvalidated_new) do |value|
+              schema.fields.each do |f|
+                name = f.name
+
+                # Prevent issue with optional fields
+                # and required fields in Data structure
+                if !value.key?(name)
+                  value[name] = nil
+                  next
+                end
+
+                data = value[name]
+
+                next unless data
+
+                f.opts
+
+                if f.type.is_a?(Schema::Base)
+                  value[name] = f.type.dataclass.unvalidated_new(data)
+                end
+              end
+
+              bare_new.call(**value)
+            end
+
+            define_singleton_method(:new) do |*args, **hash|
+              if args.size > 1
+                raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
+              end
+
+              if args.size == 1 && !hash.empty?
+                raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
+              end
+
+              if args.size == 1
+                hash = args.first
+              end
+
+              result = schema.validate(hash)
+
+              unless result.success?
+                raise InvalidSchemaError, result.errors
+              end
+
+              value = result.value
+
+              unvalidated_new(value)
+            end
+
+            class_eval(&block) if block_given?
           end
         end
       end
@@ -379,25 +381,17 @@ module Verse
 
         output = {}
 
-        # Pre-compute field keys for faster lookup
-        @field_keys_cache ||= @fields.map do |field|
-          key = field.key
-          [field, key.to_s, key.to_sym]
-        end
+        @fields.each do |field|
+          key_s = field.key.to_s
+          key_sym = key_s.to_sym
 
-        @field_keys_cache.each do |field, key_s, key_sym|
-          # Fast path for symbol keys (most common case)
-          value = input.fetch(key_sym, NOT_EXISTS)
-
-          # Try string key if symbol key not found
-          if value == NOT_EXISTS
-            value = input.fetch(key_s, NOT_EXISTS)
-          end
+          exists = true
+          value = input.fetch(key_s) { input.fetch(key_sym) { exists = false } }
 
           begin
             locals[:__path__].push(key_sym)
 
-            if value != NOT_EXISTS
+            if exists
               field.apply(value, output, error_builder, locals)
             elsif field.default?
               field.apply(field.default, output, error_builder, locals)
@@ -405,17 +399,15 @@ module Verse
               error_builder.add(field.key, "is required")
             end
           ensure
+            # This is more performant than creating new array everytime,
+            # but as in example, any storage of the array must be duplicated.
             locals[:__path__].pop
           end
         end
 
         if @extra_fields
-          # Create a set of field keys for faster lookup
-          @field_keys_set ||= Set.new(@fields.map { |field| field.key.to_sym })
-
           input.each do |key, value|
-            key_sym = key.to_sym
-            output[key_sym] = value unless @field_keys_set.include?(key_sym)
+            output[key.to_sym] = value unless @fields.any? { |field| field.key.to_s == key.to_s }
           end
         end
 
@@ -451,7 +443,7 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          output[key_sym] = coalesced_value
+          output[key.to_sym] = coalesced_value
           locals[:__path__].pop
         rescue Coalescer::Error => e
           error_builder.add(key, e.message, **locals)
