@@ -300,6 +300,30 @@ module Verse
               bare_new.call(**hash)
             end
 
+            define_singleton_method(:new_sub_dataclass) do |type, value|
+              next value unless type.is_a?(Schema::Base)
+
+              case type.type
+              when :hash
+                next value unless value.is_a?(Hash)
+                type.dataclass.unvalidated_new(**value)
+              when :dictionary
+                next value if type.scalar_classes.size != 1
+                next value unless value.is_a?(Hash)
+
+                type = type.scalar_classes.first
+                value.map{ |k, v| [k, new_sub_dataclass(type, v)] }.to_h
+              when :array
+                next value if type.scalar_classes.size != 1
+                next value unless value.is_a?(Array)
+
+                type = type.scalar_classes.first
+                value.map{ |v| new_sub_dataclass(type, v) }
+              when :scalar
+                value
+              end
+            end
+
             define_singleton_method(:unvalidated_new) do |value|
               schema.fields.each do |f|
                 name = f.name
@@ -311,15 +335,7 @@ module Verse
                   next
                 end
 
-                data = value[name]
-
-                next unless data
-
-                f.opts
-
-                if f.type.is_a?(Schema::Base)
-                  value[name] = f.type.dataclass.unvalidated_new(data)
-                end
+                value[name] = new_sub_dataclass(f.type, value[name])
               end
 
               bare_new.call(**value)

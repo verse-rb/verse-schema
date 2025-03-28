@@ -1204,4 +1204,17 @@ RSpec.describe Verse::Schema do
       )
     end
   end
+
+  context "DICTIONARY_TRANSFORM_SCHEMA" do
+    it "should apply transform to default value" do
+      # This test demonstrates the bug where field-level transforms are not applied
+      # when the field type is a dictionary schema (Hash with 'of:' parameter)
+      result = Examples::DICTIONARY_TRANSFORM_SCHEMA.validate({})
+
+      # The test expects the transform to add a :transformed key to the hash
+      # But with the current implementation, this will fail because the transform is not called
+      expect(result.success?).to be(true)
+      expect(result.value[:input]).to include(transformed: true)
+    end
+  end
 end

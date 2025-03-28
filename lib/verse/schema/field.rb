@@ -262,7 +262,15 @@ module Verse
         if @type.is_a?(Base)
           error_builder.context(@name) do |error_builder|
             result = @type.validate(value, error_builder:, locals:)
-            output[@name] = result.value
+
+            # Apply field-level post-processors to the result of the nested schema validation
+            if @post_processors && error_builder.errors.empty?
+              output[@name] = @post_processors.call(
+                result.value, @name, error_builder, **locals
+              )
+            else
+              output[@name] = result.value
+            end
           end
         else
           coalesced_value =

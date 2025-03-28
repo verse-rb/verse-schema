@@ -264,4 +264,19 @@ module Examples
   SCHEMA_ARRAY = Verse::Schema.array(ITEM)
 
   SCHEMA_SCALAR = Verse::Schema.scalar(Integer, String)
+
+  # Schema for testing dictionary transform bug
+  SimpleValueSchema = Verse::Schema.define do
+    field(:value, String)
+  end
+
+  ADD_TRANSFORMED_KEY = proc do |hash|
+    hash.merge(transformed: true)
+  end
+
+  DICTIONARY_TRANSFORM_SCHEMA = Verse::Schema.define do
+    field(:input, Hash, of: SimpleValueSchema)
+      .default({})
+      .transform(&ADD_TRANSFORMED_KEY)
+  end
 end
