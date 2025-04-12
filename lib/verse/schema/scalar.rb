@@ -18,7 +18,7 @@ module Verse
         post_processors: nil
       )
         super(post_processors:)
-        @values    = values
+        @values = values
       end
 
       def validate(input, error_builder: nil, locals: {})
@@ -111,7 +111,6 @@ module Verse
 
         Result.new(coalesced_value, error_builder.errors)
       end
-
     end
   end
 end

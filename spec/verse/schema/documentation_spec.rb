@@ -14,7 +14,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Create a schema with name and age fields
       schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule(must_be_major)
       end
 
@@ -121,7 +121,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates nested schema usage" do
       # Define a simple schema first
       simple_schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
@@ -144,7 +144,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Or define using subblock and Hash type
       nested_schema2 = Verse::Schema.define do
         field(:data, Hash) do
-          field(:name, String).meta(label: "Name", description: "The name of the person").filled
+          field(:name, String).meta(label: "Name", description: "The name of the person")
           field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
         end
       end
@@ -174,7 +174,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Define an array of schemas using Array type
       array_schema = Verse::Schema.define do
         field(:data, Array) do
-          field(:name, String).meta(label: "Name", description: "The name of the person").filled
+          field(:name, String).meta(label: "Name", description: "The name of the person")
           field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
         end
       end
@@ -211,7 +211,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                    ]
                                  })
       expect(invalid_result.success?).to be false
-      expect(invalid_result.errors).to eq({ :"data.1.age" => ["must be 18 or older"] })
+      expect(invalid_result.errors).to eq({ "data.1.age": ["must be 18 or older"] })
     end
   end
 
@@ -232,7 +232,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # This works with Schema too
       person_schema = Verse::Schema.define do
-        field(:name, String).filled
+        field(:name, String)
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
@@ -262,7 +262,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates recursive schema" do
       # Define a schema that can contain itself
       recursive_schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the item").filled
+        field(:name, String).meta(label: "Name", description: "The name of the item")
         field(:children, Array, of: self).default([])
       end
 
@@ -400,7 +400,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # array
       expect(invalid_result.errors).to eq({ nil => ["must be an array"] })
 
-
       # Invalid case - missing selector
       missing_selector_result = selector_schema.validate("invalid")
       expect(missing_selector_result.success?).to be false
@@ -422,9 +421,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       schema = Verse::Schema.define do
         field(:type, Symbol).in?(%i[facebook google])
         field(:data, {
-          facebook: facebook_schema,
-          google: google_schema
-        }, over: :type)
+                facebook: facebook_schema,
+                google: google_schema
+              }, over: :type)
       end
 
       # Validate data with different types
@@ -449,7 +448,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       expect(invalid_result.success?).to be false
       # Assuming error message format for missing required field in selected schema
-      expect(invalid_result.errors).to eq({ :"data.url" => ["is required"] })
+      expect(invalid_result.errors).to eq({ "data.url": ["is required"] })
     end
   end
 
@@ -520,7 +519,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                        })
       expect(invalid_result.success?).to be false
       # Assuming error messages for missing fields in the nested hash schema
-      expect(invalid_result.errors).to eq({ :"content.content" => ["is required"], :"content.created_at" => ["is required"] })
+      expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
     end
   end
 
@@ -595,7 +594,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                        })
       expect(invalid_result.success?).to be false
       # Assuming error message for type coercion failure in dictionary
-      expect(invalid_result.errors).to eq({ :"scores.science" => ["must be an integer"] })
+      expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
     end
   end
 
@@ -656,8 +655,8 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                      data: {
                                        x: 10.5,
                                        y: 20.3
-                                   }
-                                 })
+                                     }
+                                   })
       expect(invalid_a.success?).to be false
       expect(invalid_a.errors).to eq({ type: ["must start with x"] })
     end
@@ -846,12 +845,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       schema = Verse::Schema.define do
         # Define nested schemas
         facebook_event = define do
-          field(:url, String).filled
+          field(:url, String)
           extra_fields # Allow additional fields
         end
 
         google_event = define do
-          field(:search, String).filled
+          field(:search, String)
           extra_fields # Allow additional fields
         end
 
@@ -861,7 +860,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
           field(:type, Symbol).in?(%i[created updated])
           field(:provider, String).in?(%w[facebook google])
           field(:data, [facebook_event, google_event]) # Union type
-          field(:source, String).filled
+          field(:source, String)
 
           # Conditional validation based on provider
           rule(:data, "invalid event data structure") do |hash|
@@ -1121,15 +1120,15 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Example of reflecting on the schema
       schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
       schema.fields.each do |field|
         # Access field metadata
         field.name        # => :name or :age
-        field.label       # => "Name" or nil
-        field.description # => "The name of the person" or nil
+        field.meta       # => {label: "Name", description: "The name of the person"} or nil
+        field.type      # => String or Integer
       end
     end
   end

@@ -268,13 +268,13 @@ module Verse
             result = @type.validate(value, error_builder:, locals:)
 
             # Apply field-level post-processors to the result of the nested schema validation
-            if @post_processors && error_builder.errors.empty?
-              output[@name] = @post_processors.call(
-                result.value, @name, error_builder, **locals
-              )
-            else
-              output[@name] = result.value
-            end
+            output[@name] = if @post_processors && error_builder.errors.empty?
+                              @post_processors.call(
+                                result.value, @name, error_builder, **locals
+                              )
+                            else
+                              result.value
+                            end
           end
         else
           coalesced_value =
@@ -287,9 +287,13 @@ module Verse
 
           pp = @post_processors
 
-          output[@name] = pp ? pp.call(
-            coalesced_value, @name, error_builder, **locals
-          ) : coalesced_value
+          output[@name] = if pp
+                            pp.call(
+                              coalesced_value, @name, error_builder, **locals
+                            )
+                          else
+                            coalesced_value
+                          end
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message, **locals)

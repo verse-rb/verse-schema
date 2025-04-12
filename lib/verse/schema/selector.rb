@@ -88,7 +88,7 @@ module Verse
       def +(other)
         raise ArgumentError, "aggregate must be a selector" unless other.is_a?(Selector)
 
-        new_classes = @values.merge(other.values) do |key, old_value, new_value|
+        new_classes = @values.merge(other.values) do |_key, old_value, new_value|
           # Merge the arrays of classes
           (old_value + new_value).uniq
         end
@@ -116,7 +116,7 @@ module Verse
 
         selector = locals.fetch(:selector) do
           error_builder.add(
-              nil, "selector not provided for this schema", **locals
+            nil, "selector not provided for this schema", **locals
           )
 
           return Result.new(nil, error_builder.errors)

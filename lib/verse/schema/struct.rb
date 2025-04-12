@@ -9,7 +9,6 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Struct < Base
-
       attr_reader :fields
 
       # Initialize a new schema.
@@ -40,13 +39,13 @@ module Verse
       end
 
       def field(field_name, type = Object, **opts, &block)
-        if opts[:over]
+        if opts[:over] && @fields.none?{ |f| f.name == opts[:over] }
           # Ensure the `over` field exists and is
           # already defined.
           # There is some dependencies in validation,
           # and I think that's the best trade-off to
           # raise error early during schema definition.
-          raise ArgumentError, "over field #{opts[:over]} must be defined before #{field_name}" unless @fields.any?{ |f| f.name == opts[:over] }
+          raise ArgumentError, "over field #{opts[:over]} must be defined before #{field_name}"
         end
 
         field = Field.new(field_name, type, opts, &block)
