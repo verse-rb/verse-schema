@@ -16,7 +16,36 @@ Add this line to your application's Gemfile:
   gem 'verse-schema'
 ```
 
+## Concept
+
+Verse::Schema provides a flexible and opinionated way to define data structures, validate input, and coerce values. The core philosophy revolves around clear, explicit definitions and predictable transformations.
+
+**Key Principles:**
+
+*   **Validation and Coercion:** The primary goal is to ensure incoming data conforms to a defined structure and type, automatically coercing values where possible (e.g., string "123" to integer 123).
+*   **Explicit Definitions:** Schemas are defined using a clear DSL, making the expected data structure easy to understand.
+*   **Symbolized Keys:** By design, all hash keys within validated data are converted to symbols for consistency.
+*   **Coalescing:** The library attempts to intelligently convert input values to the target type defined in the schema. This simplifies handling data from various sources (like JSON strings, form parameters, etc.).
+*   **Extensibility:** While opinionated, the library allows for custom rules, post-processing transformations, and schema inheritance.
+
+**Schema Types (Wrappers):**
+
+Verse::Schema offers several base schema types to handle different data structures:
+
+*   **`Verse::Schema::Struct`:** The most common type, used for defining hash-like structures with fixed keys and specific types for each value. This is the default when using `Verse::Schema.define { ... }`. It validates the presence, type, and rules for each defined field. It can optionally allow extra fields not explicitly defined.
+*   **`Verse::Schema::Collection`:** Used for defining arrays where each element must conform to a specific type or schema. Created using `Verse::Schema.array(TypeOrSchema)` or `field(:name, Array, of: TypeOrSchema)`.
+*   **`Verse::Schema::Dictionary`:** Defines hash-like structures where keys are symbols and values must conform to a specific type or schema. Useful for key-value stores or maps. Created using `Verse::Schema.dictionary(TypeOrSchema)` or `field(:name, Hash, of: TypeOrSchema)`.
+*   **`Verse::Schema::Scalar`:** Represents a single value that can be one of several specified scalar types (e.g., String, Integer, Boolean). Created using `Verse::Schema.scalar(Type1, Type2, ...)`.
+*   **`Verse::Schema::Selector`:** A powerful type that allows choosing which schema or type to apply based on the value of another field (the "selector" field) or a provided `selector` local variable. This enables handling polymorphic data structures. Created using `Verse::Schema.selector(key1: TypeOrSchema1, key2: TypeOrSchema2, ...)` or `field(:name, { key1: TypeOrSchema1, ... }, over: :selector_field_name)`.
+
+These building blocks can be nested and combined to define complex data validation and coercion rules.
+
+
 ## Usage
+
+Those examples below are part of the specs of the gem. They are therefore accurate and up to date.
+
+Each example can be run directly in IRB.
 
 
 ### Simple Usage
@@ -31,7 +60,7 @@ it "demonstrates basic schema validation" do
 
   # Create a schema with name and age fields
   schema = Verse::Schema.define do
-    field(:name, String).meta(label: "Name", description: "The name of the person").filled
+    field(:name, String).meta(label: "Name", description: "The name of the person")
     field(:age, Integer).rule(must_be_major)
   end
 
@@ -98,7 +127,10 @@ it "demonstrates optional field usage" do
   # For testing
   expect(schema.validate({ name: "John" }).success?).to be true
   expect(schema.validate({ name: "John", age: 17 }).success?).to be false
+  expect(schema.validate({ name: "John", age: 17 }).errors).to eq({ age: ["must be 18 or older"] })
   expect(schema.validate({ name: "John", age: nil }).success?).to be false
+  # Assuming default type error message for nil when Integer is expected
+  expect(schema.validate({ name: "John", age: nil }).errors).to eq({ age: ["must be an integer"] })
   expect(schema_with_nil.validate({ name: "John", age: nil }).success?).to be true
 end
 
@@ -150,7 +182,7 @@ end
 it "demonstrates nested schema usage" do
   # Define a simple schema first
   simple_schema = Verse::Schema.define do
-    field(:name, String).meta(label: "Name", description: "The name of the person").filled
+    field(:name, String).meta(label: "Name", description: "The name of the person")
     field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
   end
 
@@ -173,7 +205,7 @@ it "demonstrates nested schema usage" do
   # Or define using subblock and Hash type
   nested_schema2 = Verse::Schema.define do
     field(:data, Hash) do
-      field(:name, String).meta(label: "Name", description: "The name of the person").filled
+      field(:name, String).meta(label: "Name", description: "The name of the person")
       field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
     end
   end
@@ -208,7 +240,7 @@ it "demonstrates array of schemas" do
   # Define an array of schemas using Array type
   array_schema = Verse::Schema.define do
     field(:data, Array) do
-      field(:name, String).meta(label: "Name", description: "The name of the person").filled
+      field(:name, String).meta(label: "Name", description: "The name of the person")
       field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
     end
   end
@@ -245,7 +277,7 @@ it "demonstrates array of schemas" do
                                ]
                              })
   expect(invalid_result.success?).to be false
-  expect(invalid_result.errors).to include(:"data.1.age")
+  expect(invalid_result.errors).to eq({ "data.1.age": ["must be 18 or older"] })
 end
 
 ```
@@ -271,7 +303,7 @@ it "demonstrates array of any type" do
 
   # This works with Schema too
   person_schema = Verse::Schema.define do
-    field(:name, String).filled
+    field(:name, String)
     field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
   end
 
@@ -306,7 +338,7 @@ end
 it "demonstrates recursive schema" do
   # Define a schema that can contain itself
   recursive_schema = Verse::Schema.define do
-    field(:name, String).meta(label: "Name", description: "The name of the item").filled
+    field(:name, String).meta(label: "Name", description: "The name of the item")
     field(:children, Array, of: self).default([])
   end
 
@@ -367,7 +399,7 @@ it "demonstrates global rules" do
                                                   age: 20
                                                 })
   expect(result2.success?).to be false
-  expect(result2.errors).to include(:age, :name)
+  expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
 end
 
 ```
@@ -399,6 +431,92 @@ end
 
 ### Custom Types
 
+
+
+### Selector Based Type Selection
+
+
+```ruby
+it "demonstrates using raw selector schema" do
+  selector_schema = Verse::Schema.selector(
+    a: [String, Integer],
+    b: [Hash, Array]
+  )
+
+  result = selector_schema.validate("string", locals: { selector: :a })
+  expect(result.success?).to be true
+
+  result = selector_schema.validate(42, locals: { selector: :a })
+  expect(result.success?).to be true
+
+  result = selector_schema.validate({ key: "value" }, locals: { selector: :b })
+  expect(result.success?).to be true
+  result = selector_schema.validate([1, 2, 3], locals: { selector: :b })
+  expect(result.success?).to be true
+
+  # Invalid case - wrong type for the selector
+  invalid_result = selector_schema.validate("invalid", locals: { selector: :b })
+  expect(invalid_result.success?).to be false
+  # Assuming error message format for type mismatch in selector
+  # Currently, the error message will be related to the last type of the
+  # array
+  expect(invalid_result.errors).to eq({ nil => ["must be an array"] })
+
+  # Invalid case - missing selector
+  missing_selector_result = selector_schema.validate("invalid")
+  expect(missing_selector_result.success?).to be false
+  expect(missing_selector_result.errors).to eq({ nil => ["selector not provided for this schema"] })
+end
+
+```
+
+```ruby
+it "demonstrates selector based type selection" do
+  facebook_schema = Verse::Schema.define do
+    field(:url, String)
+    field?(:title, String)
+  end
+
+  google_schema = Verse::Schema.define do
+    field(:search, String)
+    field?(:location, String)
+  end
+
+  # Define a schema with a selector field
+  schema = Verse::Schema.define do
+    field(:type, Symbol).in?(%i[facebook google])
+    field(:data, {
+            facebook: facebook_schema,
+            google: google_schema
+          }, over: :type)
+  end
+
+  # Validate data with different types
+  result1 = schema.validate({
+                              type: :facebook,
+                              data: { url: "https://facebook.com" }
+                            })
+
+  result2 = schema.validate({
+                              type: :google,
+                              data: { search: "conference 2023" }
+                            })
+
+  expect(result1.success?).to be true
+  expect(result2.success?).to be true
+
+  # Invalid case - wrong type for the selector
+  invalid_result = schema.validate({
+                                     type: :facebook,
+                                     data: { search: "invalid" } # `search` is not in `facebook_schema`
+                                   })
+
+  expect(invalid_result.success?).to be false
+  # Assuming error message format for missing required field in selected schema
+  expect(invalid_result.errors).to eq({ "data.url": ["is required"] })
+end
+
+```
 
 
 ### Postprocessing
@@ -441,13 +559,13 @@ end
 it "demonstrates fields that accept multiple types" do
   # Define a schema that accepts a String or a Hash
   content_hash = Verse::Schema.define do
-    field(:content, String).filled
+    field(:content, String)
     field(:created_at, Time)
   end
 
   schema = Verse::Schema.define do
     field(:title, String)
-    field(:content, [String, content_hash]).filled
+    field(:content, [String, content_hash])
   end
 
   # Validate with a String content
@@ -472,9 +590,11 @@ it "demonstrates fields that accept multiple types" do
   # But invalid content will fail
   invalid_result = schema.validate({
                                      title: "My Post",
-                                     content: { invalid: "structure" }
+                                     content: { invalid: "structure" } # Doesn't match `content_hash` schema
                                    })
   expect(invalid_result.success?).to be false
+  # Assuming error messages for missing fields in the nested hash schema
+  expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
 end
 
 ```
@@ -535,7 +655,7 @@ it "demonstrates dictionary schemas" do
                              scores: {
                                math: "95",
                                science: "87",
-                               history: "92"
+                               history: 92.0
                              }
                            })
 
@@ -558,6 +678,8 @@ it "demonstrates dictionary schemas" do
                                      }
                                    })
   expect(invalid_result.success?).to be false
+  # Assuming error message for type coercion failure in dictionary
+  expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
 end
 
 ```
@@ -626,6 +748,7 @@ it "demonstrates schema inheritance" do
                                  }
                                })
   expect(invalid_a.success?).to be false
+  expect(invalid_a.errors).to eq({ type: ["must start with x"] })
 end
 
 ```
@@ -775,6 +898,7 @@ it "demonstrates combining schemas" do
                                               content: "Some content"
                                             })
   expect(invalid_result.success?).to be false
+  expect(invalid_result.errors).to eq({ age: ["must be major"] })
 end
 
 ```
@@ -832,12 +956,12 @@ it "demonstrates a comprehensive example" do
   schema = Verse::Schema.define do
     # Define nested schemas
     facebook_event = define do
-      field(:url, String).filled
+      field(:url, String)
       extra_fields # Allow additional fields
     end
 
     google_event = define do
-      field(:search, String).filled
+      field(:search, String)
       extra_fields # Allow additional fields
     end
 
@@ -847,7 +971,7 @@ it "demonstrates a comprehensive example" do
       field(:type, Symbol).in?(%i[created updated])
       field(:provider, String).in?(%w[facebook google])
       field(:data, [facebook_event, google_event]) # Union type
-      field(:source, String).filled
+      field(:source, String)
 
       # Conditional validation based on provider
       rule(:data, "invalid event data structure") do |hash|
@@ -961,12 +1085,12 @@ it "demonstrates rule with error_builder parameter" do
   # Missing name
   result2 = schema.validate({ data: { email: "john@example.com" } })
   expect(result2.success?).to be false
-  expect(result2.errors[:data]).to include("missing required key: name")
+  expect(result2.errors).to eq({ data: ["missing required key: name", "must contain required keys"] })
 
   # Missing email
   result3 = schema.validate({ data: { name: "John" } })
   expect(result3.success?).to be false
-  expect(result3.errors[:data]).to include("missing required key: email")
+  expect(result3.errors).to eq({ data: ["missing required key: email", "must contain required keys"] })
 end
 
 ```

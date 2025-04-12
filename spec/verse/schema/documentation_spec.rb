@@ -14,7 +14,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Create a schema with name and age fields
       schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule(must_be_major)
       end
 
@@ -76,7 +76,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # For testing
       expect(schema.validate({ name: "John" }).success?).to be true
       expect(schema.validate({ name: "John", age: 17 }).success?).to be false
+      expect(schema.validate({ name: "John", age: 17 }).errors).to eq({ age: ["must be 18 or older"] })
       expect(schema.validate({ name: "John", age: nil }).success?).to be false
+      # Assuming default type error message for nil when Integer is expected
+      expect(schema.validate({ name: "John", age: nil }).errors).to eq({ age: ["must be an integer"] })
       expect(schema_with_nil.validate({ name: "John", age: nil }).success?).to be true
     end
   end
@@ -118,7 +121,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates nested schema usage" do
       # Define a simple schema first
       simple_schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
@@ -141,7 +144,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Or define using subblock and Hash type
       nested_schema2 = Verse::Schema.define do
         field(:data, Hash) do
-          field(:name, String).meta(label: "Name", description: "The name of the person").filled
+          field(:name, String).meta(label: "Name", description: "The name of the person")
           field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
         end
       end
@@ -171,7 +174,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Define an array of schemas using Array type
       array_schema = Verse::Schema.define do
         field(:data, Array) do
-          field(:name, String).meta(label: "Name", description: "The name of the person").filled
+          field(:name, String).meta(label: "Name", description: "The name of the person")
           field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
         end
       end
@@ -208,7 +211,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                    ]
                                  })
       expect(invalid_result.success?).to be false
-      expect(invalid_result.errors).to include(:"data.1.age")
+      expect(invalid_result.errors).to eq({ "data.1.age": ["must be 18 or older"] })
     end
   end
 
@@ -229,7 +232,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # This works with Schema too
       person_schema = Verse::Schema.define do
-        field(:name, String).filled
+        field(:name, String)
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
@@ -259,7 +262,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates recursive schema" do
       # Define a schema that can contain itself
       recursive_schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the item").filled
+        field(:name, String).meta(label: "Name", description: "The name of the item")
         field(:children, Array, of: self).default([])
       end
 
@@ -315,7 +318,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                                       age: 20
                                                     })
       expect(result2.success?).to be false
-      expect(result2.errors).to include(:age, :name)
+      expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
     end
   end
 
@@ -371,6 +374,84 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     end
   end
 
+  context "Selector Based Type Selection", :readme_section do
+    it "demonstrates using raw selector schema" do
+      selector_schema = Verse::Schema.selector(
+        a: [String, Integer],
+        b: [Hash, Array]
+      )
+
+      result = selector_schema.validate("string", locals: { selector: :a })
+      expect(result.success?).to be true
+
+      result = selector_schema.validate(42, locals: { selector: :a })
+      expect(result.success?).to be true
+
+      result = selector_schema.validate({ key: "value" }, locals: { selector: :b })
+      expect(result.success?).to be true
+      result = selector_schema.validate([1, 2, 3], locals: { selector: :b })
+      expect(result.success?).to be true
+
+      # Invalid case - wrong type for the selector
+      invalid_result = selector_schema.validate("invalid", locals: { selector: :b })
+      expect(invalid_result.success?).to be false
+      # Assuming error message format for type mismatch in selector
+      # Currently, the error message will be related to the last type of the
+      # array
+      expect(invalid_result.errors).to eq({ nil => ["must be an array"] })
+
+      # Invalid case - missing selector
+      missing_selector_result = selector_schema.validate("invalid")
+      expect(missing_selector_result.success?).to be false
+      expect(missing_selector_result.errors).to eq({ nil => ["selector not provided for this schema"] })
+    end
+
+    it "demonstrates selector based type selection" do
+      facebook_schema = Verse::Schema.define do
+        field(:url, String)
+        field?(:title, String)
+      end
+
+      google_schema = Verse::Schema.define do
+        field(:search, String)
+        field?(:location, String)
+      end
+
+      # Define a schema with a selector field
+      schema = Verse::Schema.define do
+        field(:type, Symbol).in?(%i[facebook google])
+        field(:data, {
+                facebook: facebook_schema,
+                google: google_schema
+              }, over: :type)
+      end
+
+      # Validate data with different types
+      result1 = schema.validate({
+                                  type: :facebook,
+                                  data: { url: "https://facebook.com" }
+                                })
+
+      result2 = schema.validate({
+                                  type: :google,
+                                  data: { search: "conference 2023" }
+                                })
+
+      expect(result1.success?).to be true
+      expect(result2.success?).to be true
+
+      # Invalid case - wrong type for the selector
+      invalid_result = schema.validate({
+                                         type: :facebook,
+                                         data: { search: "invalid" } # `search` is not in `facebook_schema`
+                                       })
+
+      expect(invalid_result.success?).to be false
+      # Assuming error message format for missing required field in selected schema
+      expect(invalid_result.errors).to eq({ "data.url": ["is required"] })
+    end
+  end
+
   context "Postprocessing", :readme_section do
     it "demonstrates postprocessing with transform" do
       Event = Struct.new(:type, :data, :created_at) unless defined?(Event)
@@ -403,13 +484,13 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates fields that accept multiple types" do
       # Define a schema that accepts a String or a Hash
       content_hash = Verse::Schema.define do
-        field(:content, String).filled
+        field(:content, String)
         field(:created_at, Time)
       end
 
       schema = Verse::Schema.define do
         field(:title, String)
-        field(:content, [String, content_hash]).filled
+        field(:content, [String, content_hash])
       end
 
       # Validate with a String content
@@ -434,9 +515,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # But invalid content will fail
       invalid_result = schema.validate({
                                          title: "My Post",
-                                         content: { invalid: "structure" }
+                                         content: { invalid: "structure" } # Doesn't match `content_hash` schema
                                        })
       expect(invalid_result.success?).to be false
+      # Assuming error messages for missing fields in the nested hash schema
+      expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
     end
   end
 
@@ -487,7 +570,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                  scores: {
                                    math: "95",
                                    science: "87",
-                                   history: "92"
+                                   history: 92.0
                                  }
                                })
 
@@ -510,6 +593,8 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                          }
                                        })
       expect(invalid_result.success?).to be false
+      # Assuming error message for type coercion failure in dictionary
+      expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
     end
   end
 
@@ -573,6 +658,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                      }
                                    })
       expect(invalid_a.success?).to be false
+      expect(invalid_a.errors).to eq({ type: ["must start with x"] })
     end
 
     it "tests inheritance relationships between schemas" do
@@ -711,6 +797,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                                   content: "Some content"
                                                 })
       expect(invalid_result.success?).to be false
+      expect(invalid_result.errors).to eq({ age: ["must be major"] })
     end
   end
 
@@ -758,12 +845,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       schema = Verse::Schema.define do
         # Define nested schemas
         facebook_event = define do
-          field(:url, String).filled
+          field(:url, String)
           extra_fields # Allow additional fields
         end
 
         google_event = define do
-          field(:search, String).filled
+          field(:search, String)
           extra_fields # Allow additional fields
         end
 
@@ -773,7 +860,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
           field(:type, Symbol).in?(%i[created updated])
           field(:provider, String).in?(%w[facebook google])
           field(:data, [facebook_event, google_event]) # Union type
-          field(:source, String).filled
+          field(:source, String)
 
           # Conditional validation based on provider
           rule(:data, "invalid event data structure") do |hash|
@@ -879,12 +966,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Missing name
       result2 = schema.validate({ data: { email: "john@example.com" } })
       expect(result2.success?).to be false
-      expect(result2.errors[:data]).to include("missing required key: name")
+      expect(result2.errors).to eq({ data: ["missing required key: name", "must contain required keys"] })
 
       # Missing email
       result3 = schema.validate({ data: { name: "John" } })
       expect(result3.success?).to be false
-      expect(result3.errors[:data]).to include("missing required key: email")
+      expect(result3.errors).to eq({ data: ["missing required key: email", "must contain required keys"] })
     end
   end
 
@@ -1033,15 +1120,15 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Example of reflecting on the schema
       schema = Verse::Schema.define do
-        field(:name, String).meta(label: "Name", description: "The name of the person").filled
+        field(:name, String).meta(label: "Name", description: "The name of the person")
         field(:age, Integer).rule("must be 18 or older") { |age| age >= 18 }
       end
 
       schema.fields.each do |field|
         # Access field metadata
         field.name        # => :name or :age
-        field.label       # => "Name" or nil
-        field.description # => "The name of the person" or nil
+        field.meta       # => {label: "Name", description: "The name of the person"} or nil
+        field.type      # => String or Integer
       end
     end
   end
