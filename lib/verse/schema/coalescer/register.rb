@@ -93,7 +93,7 @@ module Verse
       end
 
       register(Array) do |value|
-        raise Coalescer::Error, "must be a array" unless value.is_a?(Array)
+        raise Coalescer::Error, "must be an array" unless value.is_a?(Array)
 
         value
       end

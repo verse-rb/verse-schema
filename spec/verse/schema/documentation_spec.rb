@@ -76,7 +76,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # For testing
       expect(schema.validate({ name: "John" }).success?).to be true
       expect(schema.validate({ name: "John", age: 17 }).success?).to be false
+      expect(schema.validate({ name: "John", age: 17 }).errors).to eq({ age: ["must be 18 or older"] })
       expect(schema.validate({ name: "John", age: nil }).success?).to be false
+      # Assuming default type error message for nil when Integer is expected
+      expect(schema.validate({ name: "John", age: nil }).errors).to eq({ age: ["must be an integer"] })
       expect(schema_with_nil.validate({ name: "John", age: nil }).success?).to be true
     end
   end
@@ -208,7 +211,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                    ]
                                  })
       expect(invalid_result.success?).to be false
-      expect(invalid_result.errors).to include(:"data.1.age")
+      expect(invalid_result.errors).to eq({ :"data.1.age" => ["must be 18 or older"] })
     end
   end
 
@@ -315,7 +318,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                                       age: 20
                                                     })
       expect(result2.success?).to be false
-      expect(result2.errors).to include(:age, :name)
+      expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
     end
   end
 
@@ -392,10 +395,16 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Invalid case - wrong type for the selector
       invalid_result = selector_schema.validate("invalid", locals: { selector: :b })
       expect(invalid_result.success?).to be false
+      # Assuming error message format for type mismatch in selector
+      # Currently, the error message will be related to the last type of the
+      # array
+      expect(invalid_result.errors).to eq({ nil => ["must be an array"] })
+
 
       # Invalid case - missing selector
       missing_selector_result = selector_schema.validate("invalid")
       expect(missing_selector_result.success?).to be false
+      expect(missing_selector_result.errors).to eq({ nil => ["selector not provided for this schema"] })
     end
 
     it "demonstrates selector based type selection" do
@@ -435,10 +444,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Invalid case - wrong type for the selector
       invalid_result = schema.validate({
                                          type: :facebook,
-                                         data: { search: "invalid" }
+                                         data: { search: "invalid" } # `search` is not in `facebook_schema`
                                        })
 
       expect(invalid_result.success?).to be false
+      # Assuming error message format for missing required field in selected schema
+      expect(invalid_result.errors).to eq({ :"data.url" => ["is required"] })
     end
   end
 
@@ -474,13 +485,13 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     it "demonstrates fields that accept multiple types" do
       # Define a schema that accepts a String or a Hash
       content_hash = Verse::Schema.define do
-        field(:content, String).filled
+        field(:content, String)
         field(:created_at, Time)
       end
 
       schema = Verse::Schema.define do
         field(:title, String)
-        field(:content, [String, content_hash]).filled
+        field(:content, [String, content_hash])
       end
 
       # Validate with a String content
@@ -505,9 +516,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # But invalid content will fail
       invalid_result = schema.validate({
                                          title: "My Post",
-                                         content: { invalid: "structure" }
+                                         content: { invalid: "structure" } # Doesn't match `content_hash` schema
                                        })
       expect(invalid_result.success?).to be false
+      # Assuming error messages for missing fields in the nested hash schema
+      expect(invalid_result.errors).to eq({ :"content.content" => ["is required"], :"content.created_at" => ["is required"] })
     end
   end
 
@@ -581,6 +594,8 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                          }
                                        })
       expect(invalid_result.success?).to be false
+      # Assuming error message for type coercion failure in dictionary
+      expect(invalid_result.errors).to eq({ :"scores.science" => ["must be an integer"] })
     end
   end
 
@@ -641,9 +656,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                      data: {
                                        x: 10.5,
                                        y: 20.3
-                                     }
-                                   })
+                                   }
+                                 })
       expect(invalid_a.success?).to be false
+      expect(invalid_a.errors).to eq({ type: ["must start with x"] })
     end
 
     it "tests inheritance relationships between schemas" do
@@ -782,6 +798,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                                   content: "Some content"
                                                 })
       expect(invalid_result.success?).to be false
+      expect(invalid_result.errors).to eq({ age: ["must be major"] })
     end
   end
 
@@ -950,12 +967,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Missing name
       result2 = schema.validate({ data: { email: "john@example.com" } })
       expect(result2.success?).to be false
-      expect(result2.errors[:data]).to include("missing required key: name")
+      expect(result2.errors).to eq({ data: ["missing required key: name", "must contain required keys"] })
 
       # Missing email
       result3 = schema.validate({ data: { name: "John" } })
       expect(result3.success?).to be false
-      expect(result3.errors[:data]).to include("missing required key: email")
+      expect(result3.errors).to eq({ data: ["missing required key: email", "must contain required keys"] })
     end
   end
 
