@@ -18,7 +18,7 @@ module Verse
         # Setup identity processor
         @post_processors = post_processors
 
-        of_arg = @opts[:of] # For array and dictionary
+        of_arg = opts[:of] # For array and dictionary
         of_arg = [of_arg] unless of_arg.nil? || of_arg.is_a?(Array)
 
         nested_schema = nil
@@ -34,19 +34,23 @@ module Verse
 
         if [Hash, Object].include?(type)
           if of_arg # dictionary
-            @type = Schema.dictionary(*of_arg)
+            type = Schema.dictionary(*of_arg)
           elsif nested_schema
-            @type = nested_schema
+            type = nested_schema
           end
         elsif type == Array
           if of_arg
-            @type = Schema.array(*of_arg)
+            type = Schema.array(*of_arg)
           elsif nested_schema
-            @type = Schema.array(nested_schema)
+            type = Schema.array(nested_schema)
           end
+        elsif type.is_a?(Hash)
+          opts[:over] => Symbol
+
+          type = Schema.selector(**type)
         end
 
-        @type ||= type
+        @type = type
       end
 
       option :key, default: -> { @name }
@@ -281,14 +285,11 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          output[@name] = if @post_processors
-                            @post_processors.call(
-                              coalesced_value, @name, error_builder, **locals
-                            )
-                          else
-                            coalesced_value
-                          end
+          pp = @post_processors
 
+          output[@name] = pp ? pp.call(
+            coalesced_value, @name, error_builder, **locals
+          ) : coalesced_value
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message, **locals)

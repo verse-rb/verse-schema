@@ -16,7 +16,36 @@ Add this line to your application's Gemfile:
   gem 'verse-schema'
 ```
 
+## Concept
+
+Verse::Schema provides a flexible and opinionated way to define data structures, validate input, and coerce values. The core philosophy revolves around clear, explicit definitions and predictable transformations.
+
+**Key Principles:**
+
+*   **Validation and Coercion:** The primary goal is to ensure incoming data conforms to a defined structure and type, automatically coercing values where possible (e.g., string "123" to integer 123).
+*   **Explicit Definitions:** Schemas are defined using a clear DSL, making the expected data structure easy to understand.
+*   **Symbolized Keys:** By design, all hash keys within validated data are converted to symbols for consistency.
+*   **Coalescing:** The library attempts to intelligently convert input values to the target type defined in the schema. This simplifies handling data from various sources (like JSON strings, form parameters, etc.).
+*   **Extensibility:** While opinionated, the library allows for custom rules, post-processing transformations, and schema inheritance.
+
+**Schema Types (Wrappers):**
+
+Verse::Schema offers several base schema types to handle different data structures:
+
+*   **`Verse::Schema::Struct`:** The most common type, used for defining hash-like structures with fixed keys and specific types for each value. This is the default when using `Verse::Schema.define { ... }`. It validates the presence, type, and rules for each defined field. It can optionally allow extra fields not explicitly defined.
+*   **`Verse::Schema::Collection`:** Used for defining arrays where each element must conform to a specific type or schema. Created using `Verse::Schema.array(TypeOrSchema)` or `field(:name, Array, of: TypeOrSchema)`.
+*   **`Verse::Schema::Dictionary`:** Defines hash-like structures where keys are symbols and values must conform to a specific type or schema. Useful for key-value stores or maps. Created using `Verse::Schema.dictionary(TypeOrSchema)` or `field(:name, Hash, of: TypeOrSchema)`.
+*   **`Verse::Schema::Scalar`:** Represents a single value that can be one of several specified scalar types (e.g., String, Integer, Boolean). Created using `Verse::Schema.scalar(Type1, Type2, ...)`.
+*   **`Verse::Schema::Selector`:** A powerful type that allows choosing which schema or type to apply based on the value of another field (the "selector" field) or a provided `selector` local variable. This enables handling polymorphic data structures. Created using `Verse::Schema.selector(key1: TypeOrSchema1, key2: TypeOrSchema2, ...)` or `field(:name, { key1: TypeOrSchema1, ... }, over: :selector_field_name)`.
+
+These building blocks can be nested and combined to define complex data validation and coercion rules.
+
+
 ## Usage
+
+Those examples below are part of the specs of the gem. They are therefore accurate and up to date.
+
+Each example can be run directly in IRB.
 
 <% examples.each do |section_name, section_examples| %>
 ### <%= section_name %>

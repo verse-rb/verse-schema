@@ -23,33 +23,32 @@ module Verse
     end
 
     # Define the schema as an array of values
-    def array(*types, &block)
+    def array(*values, &block)
       if block_given?
-        raise ArgumentError, "array of value cannot be used with a block" unless types.empty?
+        raise ArgumentError, "array of value cannot be used with a block" unless values.empty?
 
         Collection.new(values: [define(&block)])
       else
-        raise ArgumentError, "block or type is required" if types.empty?
+        raise ArgumentError, "block or type is required" if values.empty?
 
-        Collection.new(values: types)
+        Collection.new(values:)
       end
     end
 
-    def dictionary(*types, &block)
+    def dictionary(*values, &block)
       if block_given?
-        raise ArgumentError, "array of value cannot be used with a block" unless types.empty?
+        raise ArgumentError, "array of value cannot be used with a block" unless values.empty?
 
         Dictionary.new(values: [define(&block)])
       else
-        raise ArgumentError, "block or type is required" if types.empty?
+        raise ArgumentError, "block or type is required" if values.empty?
 
-        Dictionary.new(values: types)
+        Dictionary.new(values:)
       end
     end
 
-    def scalar(*types)
-      Verse::Schema::Scalar.new(values: types)
-    end
+    def scalar(*values) = Scalar.new(values:)
+    def selector(**values) = Selector.new(values:)
 
     def empty
       @empty ||= begin

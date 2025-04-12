@@ -97,7 +97,7 @@ module Verse
             Coalescer.transform(
               input,
               @values,
-              @opts,
+              nil,
               locals:
             )
 

@@ -56,7 +56,8 @@ module Verse
   end
 end
 
-require_relative "./struct"
+require_relative "./collection"
 require_relative "./dictionary"
 require_relative "./scalar"
-require_relative "./collection"
+require_relative "./selector"
+require_relative "./struct"

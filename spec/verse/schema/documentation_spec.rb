@@ -371,21 +371,42 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     end
   end
 
-  pending "Selector Based Type Selection", :readme_section do
+  context "Selector Based Type Selection", :readme_section do
     it "demonstrates using raw selector schema" do
+      selector_schema = Verse::Schema.selector(
+        a: [String, Integer],
+        b: [Hash, Array]
+      )
 
+      result = selector_schema.validate("string", locals: { selector: :a })
+      expect(result.success?).to be true
+
+      result = selector_schema.validate(42, locals: { selector: :a })
+      expect(result.success?).to be true
+
+      result = selector_schema.validate({ key: "value" }, locals: { selector: :b })
+      expect(result.success?).to be true
+      result = selector_schema.validate([1, 2, 3], locals: { selector: :b })
+      expect(result.success?).to be true
+
+      # Invalid case - wrong type for the selector
+      invalid_result = selector_schema.validate("invalid", locals: { selector: :b })
+      expect(invalid_result.success?).to be false
+
+      # Invalid case - missing selector
+      missing_selector_result = selector_schema.validate("invalid")
+      expect(missing_selector_result.success?).to be false
     end
 
     it "demonstrates selector based type selection" do
-
       facebook_schema = Verse::Schema.define do
-        field(:url, String).filled
-        field(:title, String)
+        field(:url, String)
+        field?(:title, String)
       end
 
       google_schema = Verse::Schema.define do
-        field(:search, String).filled
-        field(:location, String)
+        field(:search, String)
+        field?(:location, String)
       end
 
       # Define a schema with a selector field
@@ -394,7 +415,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
         field(:data, {
           facebook: facebook_schema,
           google: google_schema
-        }, selector: :type)
+        }, over: :type)
       end
 
       # Validate data with different types

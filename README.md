@@ -16,7 +16,36 @@ Add this line to your application's Gemfile:
   gem 'verse-schema'
 ```
 
+## Concept
+
+Verse::Schema provides a flexible and opinionated way to define data structures, validate input, and coerce values. The core philosophy revolves around clear, explicit definitions and predictable transformations.
+
+**Key Principles:**
+
+*   **Validation and Coercion:** The primary goal is to ensure incoming data conforms to a defined structure and type, automatically coercing values where possible (e.g., string "123" to integer 123).
+*   **Explicit Definitions:** Schemas are defined using a clear DSL, making the expected data structure easy to understand.
+*   **Symbolized Keys:** By design, all hash keys within validated data are converted to symbols for consistency.
+*   **Coalescing:** The library attempts to intelligently convert input values to the target type defined in the schema. This simplifies handling data from various sources (like JSON strings, form parameters, etc.).
+*   **Extensibility:** While opinionated, the library allows for custom rules, post-processing transformations, and schema inheritance.
+
+**Schema Types (Wrappers):**
+
+Verse::Schema offers several base schema types to handle different data structures:
+
+*   **`Verse::Schema::Struct`:** The most common type, used for defining hash-like structures with fixed keys and specific types for each value. This is the default when using `Verse::Schema.define { ... }`. It validates the presence, type, and rules for each defined field. It can optionally allow extra fields not explicitly defined.
+*   **`Verse::Schema::Collection`:** Used for defining arrays where each element must conform to a specific type or schema. Created using `Verse::Schema.array(TypeOrSchema)` or `field(:name, Array, of: TypeOrSchema)`.
+*   **`Verse::Schema::Dictionary`:** Defines hash-like structures where keys are symbols and values must conform to a specific type or schema. Useful for key-value stores or maps. Created using `Verse::Schema.dictionary(TypeOrSchema)` or `field(:name, Hash, of: TypeOrSchema)`.
+*   **`Verse::Schema::Scalar`:** Represents a single value that can be one of several specified scalar types (e.g., String, Integer, Boolean). Created using `Verse::Schema.scalar(Type1, Type2, ...)`.
+*   **`Verse::Schema::Selector`:** A powerful type that allows choosing which schema or type to apply based on the value of another field (the "selector" field) or a provided `selector` local variable. This enables handling polymorphic data structures. Created using `Verse::Schema.selector(key1: TypeOrSchema1, key2: TypeOrSchema2, ...)` or `field(:name, { key1: TypeOrSchema1, ... }, over: :selector_field_name)`.
+
+These building blocks can be nested and combined to define complex data validation and coercion rules.
+
+
 ## Usage
+
+Those examples below are part of the specs of the gem. They are therefore accurate and up to date.
+
+Each example can be run directly in IRB.
 
 
 ### Simple Usage
@@ -401,6 +430,85 @@ end
 
 
 
+### Selector Based Type Selection
+
+
+```ruby
+it "demonstrates using raw selector schema" do
+  selector_schema = Verse::Schema.selector(
+    a: [String, Integer],
+    b: [Hash, Array]
+  )
+
+  result = selector_schema.validate("string", locals: { selector: :a })
+  expect(result.success?).to be true
+
+  result = selector_schema.validate(42, locals: { selector: :a })
+  expect(result.success?).to be true
+
+  result = selector_schema.validate({ key: "value" }, locals: { selector: :b })
+  expect(result.success?).to be true
+  result = selector_schema.validate([1, 2, 3], locals: { selector: :b })
+  expect(result.success?).to be true
+
+  # Invalid case - wrong type for the selector
+  invalid_result = selector_schema.validate("invalid", locals: { selector: :b })
+  expect(invalid_result.success?).to be false
+
+  # Invalid case - missing selector
+  missing_selector_result = selector_schema.validate("invalid")
+  expect(missing_selector_result.success?).to be false
+end
+
+```
+
+```ruby
+it "demonstrates selector based type selection" do
+  facebook_schema = Verse::Schema.define do
+    field(:url, String)
+    field?(:title, String)
+  end
+
+  google_schema = Verse::Schema.define do
+    field(:search, String)
+    field?(:location, String)
+  end
+
+  # Define a schema with a selector field
+  schema = Verse::Schema.define do
+    field(:type, Symbol).in?(%i[facebook google])
+    field(:data, {
+      facebook: facebook_schema,
+      google: google_schema
+    }, over: :type)
+  end
+
+  # Validate data with different types
+  result1 = schema.validate({
+                              type: :facebook,
+                              data: { url: "https://facebook.com" }
+                            })
+
+  result2 = schema.validate({
+                              type: :google,
+                              data: { search: "conference 2023" }
+                            })
+
+  expect(result1.success?).to be true
+  expect(result2.success?).to be true
+
+  # Invalid case - wrong type for the selector
+  invalid_result = schema.validate({
+                                     type: :facebook,
+                                     data: { search: "invalid" }
+                                   })
+
+  expect(invalid_result.success?).to be false
+end
+
+```
+
+
 ### Postprocessing
 
 
@@ -535,7 +643,7 @@ it "demonstrates dictionary schemas" do
                              scores: {
                                math: "95",
                                science: "87",
-                               history: "92"
+                               history: 92.0
                              }
                            })
 

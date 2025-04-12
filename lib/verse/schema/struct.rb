@@ -40,6 +40,15 @@ module Verse
       end
 
       def field(field_name, type = Object, **opts, &block)
+        if opts[:over]
+          # Ensure the `over` field exists and is
+          # already defined.
+          # There is some dependencies in validation,
+          # and I think that's the best trade-off to
+          # raise error early during schema definition.
+          raise ArgumentError, "over field #{opts[:over]} must be defined before #{field_name}" unless @fields.any?{ |f| f.name == opts[:over] }
+        end
+
         field = Field.new(field_name, type, opts, &block)
         @fields << field
         field
@@ -241,6 +250,10 @@ module Verse
 
           begin
             locals[:__path__].push(key_sym)
+
+            if field.opts[:over]
+              locals[:selector] = output[field.opts[:over]]
+            end
 
             if exists
               field.apply(value, output, error_builder, locals)
