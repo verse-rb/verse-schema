@@ -13,20 +13,42 @@ module Verse
     IDENTITY_PP = PostProcessor.new { |value| value }
 
     def define(from = nil, &block)
-      Verse::Schema::Base.define(from, &block)
+      if from
+        schema = from.dup
+        schema.instance_eval(&block)
+        schema
+      else
+        Struct.new(&block)
+      end
     end
 
     # Define the schema as an array of values
-    def array(*types)
-      Verse::Schema::Base.define_array(*types)
+    def array(*types, &block)
+      if block_given?
+        raise ArgumentError, "array of value cannot be used with a block" unless types.empty?
+
+        Collection.new(values: [define(&block)])
+      else
+        raise ArgumentError, "block or type is required" if types.empty?
+
+        Collection.new(values: types)
+      end
     end
 
-    def dictionary(*types)
-      Verse::Schema::Base.define_dictionary(*types)
+    def dictionary(*types, &block)
+      if block_given?
+        raise ArgumentError, "array of value cannot be used with a block" unless types.empty?
+
+        Dictionary.new(values: [define(&block)])
+      else
+        raise ArgumentError, "block or type is required" if types.empty?
+
+        Dictionary.new(values: types)
+      end
     end
 
     def scalar(*types)
-      Verse::Schema::Base.define_scalar(*types)
+      Verse::Schema::Scalar.new(values: types)
     end
 
     def empty

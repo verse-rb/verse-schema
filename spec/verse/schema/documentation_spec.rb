@@ -371,6 +371,56 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     end
   end
 
+  pending "Selector Based Type Selection", :readme_section do
+    it "demonstrates using raw selector schema" do
+
+    end
+
+    it "demonstrates selector based type selection" do
+
+      facebook_schema = Verse::Schema.define do
+        field(:url, String).filled
+        field(:title, String)
+      end
+
+      google_schema = Verse::Schema.define do
+        field(:search, String).filled
+        field(:location, String)
+      end
+
+      # Define a schema with a selector field
+      schema = Verse::Schema.define do
+        field(:type, Symbol).in?(%i[facebook google])
+        field(:data, {
+          facebook: facebook_schema,
+          google: google_schema
+        }, selector: :type)
+      end
+
+      # Validate data with different types
+      result1 = schema.validate({
+                                  type: :facebook,
+                                  data: { url: "https://facebook.com" }
+                                })
+
+      result2 = schema.validate({
+                                  type: :google,
+                                  data: { search: "conference 2023" }
+                                })
+
+      expect(result1.success?).to be true
+      expect(result2.success?).to be true
+
+      # Invalid case - wrong type for the selector
+      invalid_result = schema.validate({
+                                         type: :facebook,
+                                         data: { search: "invalid" }
+                                       })
+
+      expect(invalid_result.success?).to be false
+    end
+  end
+
   context "Postprocessing", :readme_section do
     it "demonstrates postprocessing with transform" do
       Event = Struct.new(:type, :data, :created_at) unless defined?(Event)
@@ -487,7 +537,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                                  scores: {
                                    math: "95",
                                    science: "87",
-                                   history: "92"
+                                   history: 92.0
                                  }
                                })
 
