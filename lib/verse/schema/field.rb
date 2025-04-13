@@ -103,14 +103,13 @@ module Verse
       # @return [self]
       def default(value = Optionable::NOTHING, &block)
         if value == Optionable::NOTHING && !block_given?
-          if @default.is_a?(Proc)
-            @default.call
+          if @opts[:default].is_a?(Proc)
+            @opts[:default].call
           else
-            @default
+            @opts[:default]
           end
         else
-          @default = block || value
-          @has_default = true
+          @opts[:default] = block || value
           optional
         end
       end
@@ -118,7 +117,7 @@ module Verse
       # Check if the field has a default value
       # @return [Boolean] true if the field has a default value
       def default?
-        !!@has_default
+        @opts.key?(:default)
       end
 
       # Mark the field as required. This will make the field mandatory.
@@ -126,7 +125,7 @@ module Verse
       # @return [self]
       def required
         @opts[:optional] = false
-        @has_default = false
+        @opts.delete(:default)
 
         self
       end

@@ -1082,6 +1082,32 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(person.address.city).to eq("Anytown")
       expect(person.address.zip).to eq("12345")
     end
+
+    it "demonstrates recursive data classes" do
+      # Define a schema for a tree node
+      tree_node_schema = Verse::Schema.define do
+        field(:value, String)
+        field(:children, Array, of: self).default([])
+      end
+
+      # Create a data class for the tree node
+      TreeNode = tree_node_schema.dataclass
+
+      # Create a tree structure
+      root = TreeNode.new({
+                            value: "Root",
+                            children: [
+                              {value: "Child 1"},
+                              {value: "Child 2"}
+                            ]
+                          })
+
+      # Access the tree structure
+      expect(root.value).to eq("Root")
+      expect(root.children.map(&:value)).to eq(["Child 1", "Child 2"])
+      expect(root.children[0].children).to be_empty
+    end
+
   end
 
   context "Field Extensions", :readme_section do
