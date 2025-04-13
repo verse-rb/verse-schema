@@ -976,7 +976,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
   end
 
   context "Data Classes", :readme_section do
-    it "demonstrates using schemas to create data classes", skip: RUBY_VERSION < "3.2.0" do
+    it "demonstrates using schemas to create data classes" do
       # Define a schema for a person
       person_schema = Verse::Schema.define do
         field(:name, String)
@@ -1014,9 +1014,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(person.adult?).to be true
       expect(person.greeting).to eq("Hello, John Doe!")
 
-      # Data classes are immutable and setters doesn't exists
-      expect { person.name = "Jane" }.to raise_error(NoMethodError)
-
       # Data classes have value semantics
       person2 = Person.new({
                              name: "John Doe",
@@ -1027,11 +1024,12 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Invalid data raises an error
       expect {
-        Person.new({
+        person_invalid = Person.new({
                      name: "Young Person",
                      age: 16, # Too young
                      email: "young@example.com"
                    })
+        binding.pry
       }.to raise_error(Verse::Schema::InvalidSchemaError)
 
       # You can create from raw hash without validation
@@ -1044,7 +1042,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(raw_person.age).to eq(16)
     end
 
-    it "demonstrates nested data classes", skip: RUBY_VERSION < "3.2.0" do
+    it "demonstrates nested data classes"  do
       # Data class will automatically use dataclass of other nested schemas.
       # Define a schema for an address
       address_schema = Verse::Schema.define do

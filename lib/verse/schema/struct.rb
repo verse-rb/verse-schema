@@ -5,6 +5,7 @@ require_relative "./result"
 require_relative "./error_builder"
 require_relative "./post_processor"
 require_relative "./invalid_schema_error"
+require_relative "./value_object_builder"
 
 module Verse
   module Schema
@@ -158,76 +159,57 @@ module Verse
         new_schema
       end
 
-      # Need data structure
-      if RUBY_VERSION >= "3.2.0"
-        # Represent a dataclass using schema internally
-        def dataclass(&block)
-          schema = self
+      # Create a value object class from the schema.
+      def dataclass(&block)
+        return @dataclass if @dataclass
 
-          @dataclass ||= Data.define(
-            *fields.map(&:name)
-          ) do
-            bare_new = singleton_method(:new)
+        fields = @fields.map(&:name)
 
-            define_singleton_method(:from_raw) do |hash|
-              # Set optional unset fields to `nil`
-              (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
+        value_object_schema = ValueObjectBuilder.build(self)
 
-              bare_new.call(**hash)
+        has_extra_fields = extra_fields?
+
+        fields << :extra_fields if has_extra_fields
+
+        value_object = ::Struct.new(*fields, keyword_init: true) do
+          # Redefine new method
+          define_singleton_method(:from_raw, &method(:new))
+
+          define_singleton_method(:new) do |*args, **kwargs|
+            # Use the schema to generate the hash for our record
+            if args.size > 1
+              raise ArgumentError, "You cannot pass more than one argument"
             end
 
-            define_singleton_method(:new_sub_dataclass) do |type, value|
-              next value unless type.is_a?(Struct)
-              next value unless value.is_a?(Hash)
+            if args.size == 1
+              if kwargs.any?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
 
-              type.dataclass.unvalidated_new(**value)
+              kwargs = args.first
             end
 
-            define_singleton_method(:unvalidated_new) do |value|
-              schema.fields.each do |f|
-                name = f.name
+            output = value_object_schema.new(kwargs)
+            binding.pry
 
-                # Prevent issue with optional fields
-                # and required fields in Data structure
-                if !value.key?(name)
-                  value[name] = nil
-                  next
-                end
+            if has_extra_fields
+              standard_fields = kwargs.slice(*fields[0..-2])
+              extra_fields = kwargs.except(*fields[0..-2])
 
-                value[name] = new_sub_dataclass(f.type, value[name])
-              end
-
-              bare_new.call(**value)
+              from_raw(**standard_fields, extra_fields:)
+            else
+              from_raw(**kwargs)
             end
-
-            define_singleton_method(:new) do |*args, **hash|
-              if args.size > 1
-                raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
-              end
-
-              if args.size == 1 && !hash.empty?
-                raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
-              end
-
-              if args.size == 1
-                hash = args.first
-              end
-
-              result = schema.validate(hash)
-
-              unless result.success?
-                raise InvalidSchemaError, result.errors
-              end
-
-              value = result.value
-
-              unvalidated_new(value)
-            end
-
-            class_eval(&block) if block_given?
           end
+
+          define_singleton_method(:schema){ value_object_schema }
+
+          class_eval(&block) if block
         end
+
+        @dataclass = value_object
       end
+
 
       protected
 
