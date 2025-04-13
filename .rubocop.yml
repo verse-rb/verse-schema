@@ -21,3 +21,12 @@ Metrics/PerceivedComplexity:
 
 Layout/LineLength:
   Max: 120
+
+Layout/BlockAlignment:
+  EnforcedStyleAlignWith: start_of_line
+
+Layout/MultilineMethodCallIndentation:
+  EnforcedStyle: indented
+
+Layout/ArgumentAlignment:
+  EnforcedStyle: with_fixed_indentation

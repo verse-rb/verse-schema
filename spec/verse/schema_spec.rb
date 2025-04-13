@@ -502,8 +502,8 @@ RSpec.describe Verse::Schema do
 
       it "fails with complete errors list" do
         result = Examples::OPEN_HASH.validate({
-                                                "age" => 21
-                                              })
+          "age" => 21
+        })
         expect(result.success?).to be(false)
         expect(result.errors).to eq(
           {
@@ -1137,8 +1137,8 @@ RSpec.describe Verse::Schema do
       result = Examples::SCHEMA_SCALAR.validate([])
       expect(result.success?).to be(false)
       expect(result.errors).to eq({
-                                    nil => ["must be a string"]
-                                  })
+        nil => ["must be a string"]
+      })
     end
   end
 

@@ -61,7 +61,6 @@ module Verse
 
         raise InvalidSchemaError, result.errors
       end
-
     end
   end
 end

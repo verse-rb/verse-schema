@@ -57,9 +57,11 @@ module Verse
         field(field_name, type, **opts, &block).optional
       end
 
+      # rubocop:disable Style/OptionalBooleanParameter
       def extra_fields(value = true)
         @extra_fields = !!value
       end
+      # rubocop:enable Style/OptionalBooleanParameter
 
       def extra_fields? = @extra_fields
 
@@ -230,7 +232,6 @@ module Verse
 
         @dataclass = value_object
       end
-
 
       protected
 

@@ -123,12 +123,10 @@ module Verse
                 v
               end
             end
+          elsif value.is_a?(Base)
+            value.dataclass_schema
           else
-            if value.is_a?(Base)
-              value.dataclass_schema
-            else
-              value
-            end
+            value
           end
         end
       end

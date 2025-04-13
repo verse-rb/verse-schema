@@ -102,10 +102,8 @@ module Verse
               value
             end
           end
-        else
-          if values.is_a?(Base)
-            @dataclass_schema.values = values.dataclass_schema
-          end
+        elsif values.is_a?(Base)
+          @dataclass_schema.values = values.dataclass_schema
         end
 
         @dataclass_schema

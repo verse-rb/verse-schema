@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "./optionable"
+require "attr_chainable"
 require_relative "./coalescer"
 require_relative "./post_processor"
 
@@ -8,9 +8,9 @@ module Verse
   module Schema
     # A field in a schema
     class Field
-      include Optionable
+      NOTHING = Object.new.freeze
 
-      attr_reader :name, :type, :opts, :post_processors
+      attr_reader :opts, :post_processors
 
       def initialize(name, type, opts, post_processors: nil, &block)
         @name = name
@@ -53,13 +53,34 @@ module Verse
         @type = type
       end
 
-      option :key, default: -> { @name }
-      option :type
+      attr_chainable :name, :type
 
+      # Set the field as optional. This will validate schema where the
+      # field key is missing.
+      #
+      # Note: If the key is nil, the field will be considered as
+      # existing, and your schema might fail. To allow field to be nil,
+      # you must use union of type:
+      #
+      #  field(:name, [String, NilClass]).optional
+      #
+      # This will allow the field to be nil, and will not raise an error
+      # if the field is missing.
+      #
+      # @return [self]
       def optional
         @opts[:optional] = true
 
         self
+      end
+
+      def key(value = Nothing)
+        if value == Nothing
+          @opts[:key] ||= @name
+        else
+          @opts[:key] = value
+          self
+        end
       end
 
       def dup
@@ -101,8 +122,8 @@ module Verse
       # @param [Object] value the default value
       # @param [Proc] block the block to call to get the default value, if any.
       # @return [self]
-      def default(value = Optionable::NOTHING, &block)
-        if value == Optionable::NOTHING && !block_given?
+      def default(value = Nothing, &block)
+        if value == Nothing && !block_given?
           if @opts[:default].is_a?(Proc)
             @opts[:default].call
           else
