@@ -47,11 +47,20 @@ module Verse
         @post_processors.attach(
           PostProcessor.new(&callback)
         )
+
+        self
       end
 
       def valid?(input) = validate(input).success?
 
       def validate(input, error_builder: nil, locals: {}) = raise NotImplementedError
+
+      def new(arg)
+        result = validate(arg)
+        return result.value if result.success?
+
+        raise InvalidSchemaError, result.errors
+      end
     end
   end
 end

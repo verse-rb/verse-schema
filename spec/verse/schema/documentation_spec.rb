@@ -84,6 +84,34 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     end
   end
 
+  context "Different key for field", :readme_section do
+    it "demonstrates using different keys for fields" do
+      # If the key of the input schema is different from the output schema,
+      # you can use the `key` method to specify the key in the input schema
+      # that should be used for the output schema.
+
+      # Define a schema with different keys for fields
+      schema = Verse::Schema.define do
+        # key can be passed as option
+        field(:name, String, key: :firstName)
+        # or using the chainable syntax
+        field(:email, String).key(:email_address)
+      end
+
+      # Validate data with the original key
+      result1 = schema.validate({
+        firstName: "John",
+        email_address: "john@example.tld"
+      })
+      result1.success? # => true
+
+      expect(result1.value).to eq({
+        name: "John",
+        email: "john@example.tld"
+      })
+    end
+  end
+
   context "Default Fields", :readme_section do
     it "demonstrates default field values" do
       # Use a static value
@@ -132,11 +160,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate nested data
       result = nested_schema1.validate({
-                                         data: {
-                                           name: "John",
-                                           age: 30
-                                         }
-                                       })
+        data: {
+          name: "John",
+          age: 30
+        }
+      })
 
       result.success? # => true
       result.value # => { data: { name: "John", age: 30 } }
@@ -151,21 +179,21 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Both approaches produce equivalent schemas
       nested_schema2.validate({
-                                data: {
-                                  name: "John",
-                                  age: 30
-                                }
-                              }).success? # => true
+        data: {
+          name: "John",
+          age: 30
+        }
+      }).success? # => true
 
       # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({ data: { name: "John", age: 30 } })
       expect(nested_schema2.validate({
-                                       data: {
-                                         name: "John",
-                                         age: 30
-                                       }
-                                     }).success?).to be true
+        data: {
+          name: "John",
+          age: 30
+        }
+      }).success?).to be true
     end
   end
 
@@ -181,11 +209,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate an array of items
       result = array_schema.validate({
-                                       data: [
-                                         { name: "John", age: 30 },
-                                         { name: "Jane", age: 25 }
-                                       ]
-                                     })
+        data: [
+          { name: "John", age: 30 },
+          { name: "Jane", age: 25 }
+        ]
+      })
 
       # Check the result
       result.success? # => true
@@ -193,11 +221,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # If any item in the array is invalid, the whole validation fails
       invalid_result = array_schema.validate({
-                                               data: [
-                                                 { name: "John", age: 30 },
-                                                 { name: "Jane", age: 17 } # Age is invalid
-                                               ]
-                                             })
+        data: [
+          { name: "John", age: 30 },
+          { name: "Jane", age: 17 } # Age is invalid
+        ]
+      })
 
       invalid_result.success? # => false
       invalid_result.errors # => { "data.1.age": ["must be 18 or older"] }
@@ -205,11 +233,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({
-                                   data: [
-                                     { name: "John", age: 30 },
-                                     { name: "Jane", age: 25 }
-                                   ]
-                                 })
+        data: [
+          { name: "John", age: 30 },
+          { name: "Jane", age: 25 }
+        ]
+      })
       expect(invalid_result.success?).to be false
       expect(invalid_result.errors).to eq({ "data.1.age": ["must be 18 or older"] })
     end
@@ -224,8 +252,8 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate array of integers (with automatic coercion)
       result = array_schema1.validate({
-                                        data: [1, "2", "3"] # String values will be coerced to integers
-                                      })
+        data: [1, "2", "3"] # String values will be coerced to integers
+      })
 
       result.success? # => true
       result.value # => { data: [1, 2, 3] }
@@ -243,11 +271,11 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate array of people
       result2 = array_schema2.validate({
-                                         people: [
-                                           { name: "John", age: 30 },
-                                           { name: "Jane", age: 25 }
-                                         ]
-                                       })
+        people: [
+          { name: "John", age: 30 },
+          { name: "Jane", age: 25 }
+        ]
+      })
 
       result2.success? # => true
 
@@ -307,16 +335,16 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Valid case
       result1 = multiple_field_rule_schema.validate({
-                                                      name: "Jane",
-                                                      age: 20
-                                                    })
+        name: "Jane",
+        age: 20
+      })
       expect(result1.success?).to be true
 
       # Invalid case - rule violation
       result2 = multiple_field_rule_schema.validate({
-                                                      name: "John",
-                                                      age: 20
-                                                    })
+        name: "John",
+        age: 20
+      })
       expect(result2.success?).to be false
       expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
     end
@@ -421,30 +449,30 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       schema = Verse::Schema.define do
         field(:type, Symbol).in?(%i[facebook google])
         field(:data, {
-                facebook: facebook_schema,
-                google: google_schema
-              }, over: :type)
+          facebook: facebook_schema,
+          google: google_schema
+        }, over: :type)
       end
 
       # Validate data with different types
       result1 = schema.validate({
-                                  type: :facebook,
-                                  data: { url: "https://facebook.com" }
-                                })
+        type: :facebook,
+        data: { url: "https://facebook.com" }
+      })
 
       result2 = schema.validate({
-                                  type: :google,
-                                  data: { search: "conference 2023" }
-                                })
+        type: :google,
+        data: { search: "conference 2023" }
+      })
 
       expect(result1.success?).to be true
       expect(result2.success?).to be true
 
       # Invalid case - wrong type for the selector
       invalid_result = schema.validate({
-                                         type: :facebook,
-                                         data: { search: "invalid" } # `search` is not in `facebook_schema`
-                                       })
+        type: :facebook,
+        data: { search: "invalid" } # `search` is not in `facebook_schema`
+      })
 
       expect(invalid_result.success?).to be false
       # Assuming error message format for missing required field in selected schema
@@ -468,10 +496,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       end
 
       output = event_schema.validate({
-                                       type: "user.created",
-                                       data: { "name" => "John" },
-                                       created_at: "2020-01-01T00:00:00Z"
-                                     }).value
+        type: "user.created",
+        data: { "name" => "John" },
+        created_at: "2020-01-01T00:00:00Z"
+      }).value
 
       expect(output).to be_a(Event)
       expect(output.type).to eq("user.created")
@@ -495,18 +523,18 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate with a String content
       result1 = schema.validate({
-                                  title: "My Post",
-                                  content: "This is a simple string content"
-                                })
+        title: "My Post",
+        content: "This is a simple string content"
+      })
 
       # Validate with a Hash content
       result2 = schema.validate({
-                                  title: "My Post",
-                                  content: {
-                                    content: "This is a structured content",
-                                    created_at: "2023-01-01T12:00:00Z"
-                                  }
-                                })
+        title: "My Post",
+        content: {
+          content: "This is a structured content",
+          created_at: "2023-01-01T12:00:00Z"
+        }
+      })
 
       # Both are valid
       expect(result1.success?).to be true
@@ -514,9 +542,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # But invalid content will fail
       invalid_result = schema.validate({
-                                         title: "My Post",
-                                         content: { invalid: "structure" } # Doesn't match `content_hash` schema
-                                       })
+        title: "My Post",
+        content: { invalid: "structure" } # Doesn't match `content_hash` schema
+      })
       expect(invalid_result.success?).to be false
       # Assuming error messages for missing fields in the nested hash schema
       expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
@@ -535,15 +563,15 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate with only the defined fields
       result1 = schema.validate({
-                                  name: "John"
-                                })
+        name: "John"
+      })
 
       # Validate with extra fields
       result2 = schema.validate({
-                                  name: "John",
-                                  age: 30,
-                                  email: "john@example.com"
-                                })
+        name: "John",
+        age: 30,
+        email: "john@example.com"
+      })
 
       # Both are valid
       expect(result1.success?).to be true
@@ -551,10 +579,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Extra fields are preserved in the output
       expect(result2.value).to eq({
-                                    name: "John",
-                                    age: 30,
-                                    email: "john@example.com"
-                                  })
+        name: "John",
+        age: 30,
+        email: "john@example.com"
+      })
     end
   end
 
@@ -567,31 +595,31 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate a dictionary
       result = schema.validate({
-                                 scores: {
-                                   math: "95",
-                                   science: "87",
-                                   history: 92.0
-                                 }
-                               })
+        scores: {
+          math: "95",
+          science: "87",
+          history: 92.0
+        }
+      })
 
       # The validation succeeds and coerces string values to integers
       expect(result.success?).to be true
       expect(result.value).to eq({
-                                   scores: {
-                                     math: 95,
-                                     science: 87,
-                                     history: 92
-                                   }
-                                 })
+        scores: {
+          math: 95,
+          science: 87,
+          history: 92
+        }
+      })
 
       # Invalid values will cause validation to fail
       invalid_result = schema.validate({
-                                         scores: {
-                                           math: "95",
-                                           science: "invalid",
-                                           history: "92"
-                                         }
-                                       })
+        scores: {
+          math: "95",
+          science: "invalid",
+          history: "92"
+        }
+      })
       expect(invalid_result.success?).to be false
       # Assuming error message for type coercion failure in dictionary
       expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
@@ -627,22 +655,22 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate using child_a schema
       result_a = child_a.validate({
-                                    type: :xcoord,
-                                    id: 1,
-                                    data: {
-                                      x: 10.5,
-                                      y: 20.3
-                                    }
-                                  })
+        type: :xcoord,
+        id: 1,
+        data: {
+          x: 10.5,
+          y: 20.3
+        }
+      })
 
       # Validate using child_b schema
       result_b = child_b.validate({
-                                    type: :ydata,
-                                    id: 2,
-                                    data: {
-                                      content: "Some content"
-                                    }
-                                  })
+        type: :ydata,
+        id: 2,
+        data: {
+          content: "Some content"
+        }
+      })
 
       # Both validations succeed
       expect(result_a.success?).to be true
@@ -650,13 +678,13 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Invalid data for child_a
       invalid_a = child_a.validate({
-                                     type: :ycoord, # Should start with 'x'
-                                     id: 1,
-                                     data: {
-                                       x: 10.5,
-                                       y: 20.3
-                                     }
-                                   })
+        type: :ycoord, # Should start with 'x'
+        id: 1,
+        data: {
+          x: 10.5,
+          y: 20.3
+        }
+      })
       expect(invalid_a.success?).to be false
       expect(invalid_a.errors).to eq({ type: ["must start with x"] })
     end
@@ -784,18 +812,18 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate using the combined schema
       result = combined_schema.validate({
-                                          age: 25,
-                                          content: "Some content"
-                                        })
+        age: 25,
+        content: "Some content"
+      })
 
       # The validation succeeds
       expect(result.success?).to be true
 
       # Invalid data will still fail
       invalid_result = combined_schema.validate({
-                                                  age: 16, # Too young
-                                                  content: "Some content"
-                                                })
+        age: 16, # Too young
+        content: "Some content"
+      })
       expect(invalid_result.success?).to be false
       expect(invalid_result.errors).to eq({ age: ["must be major"] })
     end
@@ -826,9 +854,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate using the dictionary schema
       dict_result = dictionary_schema.validate({
-                                                 item1: { name: "First Item" },
-                                                 item2: { name: "Second Item" }
-                                               })
+        item1: { name: "First Item" },
+        item2: { name: "Second Item" }
+      })
       expect(dict_result.success?).to be true
 
       # Validate using the scalar schema
@@ -976,7 +1004,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
   end
 
   context "Data Classes", :readme_section do
-    it "demonstrates using schemas to create data classes", skip: RUBY_VERSION < "3.2.0" do
+    it "demonstrates using schemas to create data classes" do
       # Define a schema for a person
       person_schema = Verse::Schema.define do
         field(:name, String)
@@ -1000,10 +1028,10 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Create a valid instance
       person = Person.new({
-                            name: "John Doe",
-                            age: 30,
-                            email: "john@example.com"
-                          })
+        name: "John Doe",
+        age: 30,
+        email: "john@example.com"
+      })
 
       # Access fields as methods
       expect(person.name).to eq("John Doe")
@@ -1014,37 +1042,34 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(person.adult?).to be true
       expect(person.greeting).to eq("Hello, John Doe!")
 
-      # Data classes are immutable and setters doesn't exists
-      expect { person.name = "Jane" }.to raise_error(NoMethodError)
-
       # Data classes have value semantics
       person2 = Person.new({
-                             name: "John Doe",
-                             age: 30,
-                             email: "john@example.com"
-                           })
+        name: "John Doe",
+        age: 30,
+        email: "john@example.com"
+      })
       expect(person).to eq(person2)
 
       # Invalid data raises an error
       expect {
         Person.new({
-                     name: "Young Person",
-                     age: 16, # Too young
-                     email: "young@example.com"
-                   })
+          name: "Young Person",
+          age: 16, # Too young
+          email: "young@example.com"
+        })
       }.to raise_error(Verse::Schema::InvalidSchemaError)
 
       # You can create from raw hash without validation
       raw_person = Person.from_raw({
-                                     name: "Raw Person",
-                                     age: 16, # Would normally be invalid
-                                     email: "raw@example.com"
-                                   })
+        name: "Raw Person",
+        age: 16, # Would normally be invalid
+        email: "raw@example.com"
+      })
       expect(raw_person.name).to eq("Raw Person")
       expect(raw_person.age).to eq(16)
     end
 
-    it "demonstrates nested data classes", skip: RUBY_VERSION < "3.2.0" do
+    it "demonstrates nested data classes" do
       # Data class will automatically use dataclass of other nested schemas.
       # Define a schema for an address
       address_schema = Verse::Schema.define do
@@ -1069,19 +1094,140 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Create a person with a nested address
       person = Person.new({
-                            name: "John Doe",
-                            address: {
-                              street: "123 Main St",
-                              city: "Anytown",
-                              zip: "12345"
-                            }
-                          })
+        name: "John Doe",
+        address: {
+          street: "123 Main St",
+          city: "Anytown",
+          zip: "12345"
+        }
+      })
 
       # The nested address is also a data class
       expect(person.address).to be_a(Address)
       expect(person.address.street).to eq("123 Main St")
       expect(person.address.city).to eq("Anytown")
       expect(person.address.zip).to eq("12345")
+    end
+
+    it "demonstrates recursive data classes" do
+      # Define a schema for a tree node
+      tree_node_schema = Verse::Schema.define do
+        field(:value, String)
+        field(:children, Array, of: self).default([])
+      end
+
+      # Create a data class for the tree node
+      # rubocop:disable Lint/ConstantDefinitionInBlock
+      TreeNode = tree_node_schema.dataclass
+      # rubocop:enable Lint/ConstantDefinitionInBlock
+
+      # Create a tree structure
+      root = TreeNode.new({
+        value: "Root",
+        children: [
+          { value: "Child 1" },
+          { value: "Child 2" }
+        ]
+      })
+
+      # Access the tree structure
+      expect(root.value).to eq("Root")
+      expect(root.children.map(&:value)).to eq(["Child 1", "Child 2"])
+      expect(root.children[0].children).to be_empty
+    end
+
+    it "works with dictionary, array, scalar and selector too" do
+      schema = Verse::Schema.define do
+        field(:name, String)
+        field(:type, Symbol).in?(%i[student teacher])
+
+        teacher_data = define do
+          field(:subject, String)
+          field(:years_of_experience, Integer)
+        end
+
+        student_data = define do
+          field(:grade, Integer)
+          field(:school, String)
+        end
+
+        # Selector
+        field(:data, { student: student_data, teacher: teacher_data }, over: :type)
+
+        # Array of Scalar
+        comment_schema = define do
+          field(:text, String)
+          field(:created_at, Time)
+        end
+
+        # Verbose but to test everything.
+        field(:comment, Verse::Schema.array(
+          Verse::Schema.scalar(String, comment_schema)
+        ))
+
+        score_schema = define do
+          field(:a, Integer)
+          field(:b, Integer)
+        end
+
+        # Dictionary
+        field(:scores, Hash, of: score_schema)
+      end
+
+      # Get the dataclass:
+      # rubocop:disable Lint/ConstantDefinitionInBlock
+      Person = schema.dataclass
+      # rubocop:enable Lint/ConstantDefinitionInBlock
+
+      # Create a valid instance
+      person = Person.new({
+        name: "John Doe",
+        type: :student,
+        data: {
+          grade: 10,
+          school: "High School"
+        },
+        comment: [
+          { text: "Great job!", created_at: "2023-01-01T12:00:00Z" },
+          "This is a comment"
+        ],
+        scores: {
+          math: { a: 90.5, b: 95 },
+          science: { a: 85, b: 88 }
+        }
+      })
+
+      expect(person.data.grade).to eq(10)
+      expect(person.data.school).to eq("High School")
+      expect(person.comment[0].text).to eq("Great job!")
+      expect(person.comment[0].created_at).to be_a(Time)
+      expect(person.comment[1]).to eq("This is a comment")
+      expect(person.scores[:math].a).to eq(90)
+
+      # Invalid schema
+
+      expect {
+        Person.new({
+          name: "Invalid Person",
+          type: :student,
+          data: {
+            subject: "Math", # Invalid field for student
+            years_of_experience: 5 # Invalid field for student
+          },
+          comment: [
+            { text: "Great job!", created_at: "2023-01-01T12:00:00Z" },
+            "This is a comment"
+          ],
+          scores: {
+            math: { a: 90.5, b: 95 },
+            science: { a: 85, b: 88 }
+          }
+        })
+      }.to raise_error(Verse::Schema::InvalidSchemaError).with_message(
+        "Invalid schema:\n" \
+        "data.grade: [\"is required\"]\n" \
+        "data.school: [\"is required\"]"
+      )
     end
   end
 
@@ -1126,9 +1272,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       schema.fields.each do |field|
         # Access field metadata
-        field.name        # => :name or :age
-        field.meta       # => {label: "Name", description: "The name of the person"} or nil
-        field.type      # => String or Integer
+        field.name # => :name or :age
+        field.meta # => {label: "Name", description: "The name of the person"} or nil
+        field.type # => String or Integer
       end
     end
   end

@@ -5,7 +5,7 @@ require_relative "./base"
 module Verse
   module Schema
     class Dictionary < Base
-      attr_reader :values
+      attr_accessor :values
 
       # Initialize a new dictionary.
       # @param values [Array<Class>] The allowed values of the dictionary.
@@ -48,7 +48,7 @@ module Verse
       end
 
       def dup
-        Base.new(
+        Dictionary.new(
           values: @values.dup,
           post_processors: @post_processors&.dup
         )
@@ -95,6 +95,28 @@ module Verse
           values: new_classes,
           post_processors: new_post_processors
         )
+      end
+
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        values = @dataclass_schema.values
+
+        if values.is_a?(Array)
+          @dataclass_schema.values = values.map do |value|
+            if value.is_a?(Base)
+              value.dataclass_schema
+            else
+              value
+            end
+          end
+        elsif values.is_a?(Base)
+          @dataclass_schema.values = values.dataclass_schema
+        end
+
+        @dataclass_schema
       end
 
       protected

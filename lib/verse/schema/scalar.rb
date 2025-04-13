@@ -5,7 +5,7 @@ require_relative "./base"
 module Verse
   module Schema
     class Scalar < Base
-      attr_reader :values
+      attr_accessor :values
 
       # Initialize a new schema.
       #
@@ -38,18 +38,30 @@ module Verse
       end
 
       def dup
-        Collection.new(
+        Scalar.new(
           values: @values.dup,
           post_processors: @post_processors&.dup
         )
       end
 
       def inherit?(parent_schema)
-        # Check if parent_schema is a Base and if all parent fields are present in this schema
-        parent_schema.is_a?(Scalar) &&
-          (
-            parent_schema.values & @values
-          ).size == parent_schema.values.size
+        return false unless parent_schema.is_a?(Scalar)
+
+        # Check that all the values in the parent schema are present in the
+        # current schema
+        parent_schema.values.all? do |parent_value|
+          @values.any? do |child_value|
+            if (child_value.is_a?(Base) && parent_value.is_a?(Base)) ||
+               (child_value.is_a?(Class) && parent_value.is_a?(Class))
+              puts "#{child_value} <= #{parent_value}: #{child_value <= parent_value}"
+              # Both are schema instances, use their inherit? method
+              child_value <= parent_value
+            else
+              # Mixed types or non-inheritable types, cannot inherit
+              false
+            end
+          end
+        end
       end
 
       def <=(other)
@@ -68,9 +80,9 @@ module Verse
 
       # Aggregation of two schemas.
       def +(other)
-        raise ArgumentError, "aggregate must be a collection" unless other.is_a?(Collection)
+        raise ArgumentError, "aggregate must be a scalar" unless other.is_a?(Scalar)
 
-        new_classes = @values + other.values
+        new_classes = (@values + other.values).uniq
         new_post_processors = @post_processors&.dup
 
         if other.post_processors
@@ -81,10 +93,26 @@ module Verse
           end
         end
 
-        Collection.new(
+        Scalar.new(
           values: new_classes,
           post_processors: new_post_processors
         )
+      end
+
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        values = @dataclass_schema.values
+
+        @dataclass_schema.values = values.map do |value|
+          next value unless value.is_a?(Base)
+
+          value.dataclass_schema
+        end
+
+        @dataclass_schema
       end
 
       protected
@@ -107,6 +135,10 @@ module Verse
           end
         rescue Coalescer::Error => e
           error_builder.add(nil, e.message, **locals)
+        end
+
+        if @post_processors && error_builder.errors.empty?
+          coalesced_value = @post_processors.call(coalesced_value, nil, error_builder, **locals)
         end
 
         Result.new(coalesced_value, error_builder.errors)

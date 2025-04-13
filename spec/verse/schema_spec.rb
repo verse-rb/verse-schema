@@ -196,39 +196,6 @@ RSpec.describe Verse::Schema do
         )
       end
 
-      if RUBY_VERSION >= "3.2.0"
-        context "dataclass" do
-          it "can use dataclass" do
-            klass = Examples::NESTED_SCHEMA.dataclass
-
-            data = klass.new(
-              {
-                data: {
-                  name: "John Doe",
-                  age: 30
-                }
-              }
-            )
-
-            expect(data.data.name).to eq("John Doe")
-            expect(data.data.age).to eq(30)
-          end
-
-          it "raises error if invalid" do
-            klass = Examples::NESTED_SCHEMA.dataclass
-
-            expect {
-              klass.new(
-                data: {
-                  name: "John Doe",
-                  age: 17
-                }
-              )
-            }.to raise_error(Verse::Schema::InvalidSchemaError)
-          end
-        end
-      end
-
       it "fails with complete errors list" do
         result = Examples::NESTED_SCHEMA.validate({})
         expect(result.success?).to be(false)
@@ -535,8 +502,8 @@ RSpec.describe Verse::Schema do
 
       it "fails with complete errors list" do
         result = Examples::OPEN_HASH.validate({
-                                                "age" => 21
-                                              })
+          "age" => 21
+        })
         expect(result.success?).to be(false)
         expect(result.errors).to eq(
           {
@@ -1170,8 +1137,8 @@ RSpec.describe Verse::Schema do
       result = Examples::SCHEMA_SCALAR.validate([])
       expect(result.success?).to be(false)
       expect(result.errors).to eq({
-                                    nil => ["must be a string"]
-                                  })
+        nil => ["must be a string"]
+      })
     end
   end
 

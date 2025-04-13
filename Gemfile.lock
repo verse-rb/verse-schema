@@ -2,11 +2,13 @@ PATH
   remote: .
   specs:
     verse-schema (0.1.0)
+      attr_chainable (~> 1.0)
 
 GEM
   remote: https://rubygems.org/
   specs:
     ast (2.4.2)
+    attr_chainable (1.0.0)
     bootsnap (1.18.3)
       msgpack (~> 1.2)
     coderay (1.1.3)

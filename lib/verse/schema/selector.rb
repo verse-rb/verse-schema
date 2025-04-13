@@ -5,7 +5,7 @@ require_relative "./base"
 module Verse
   module Schema
     class Selector < Base
-      attr_reader :values
+      attr_accessor :values
 
       # Initialize a new selector schema.
       # Selector schema will select a subset of the input based on the provided values.
@@ -17,19 +17,7 @@ module Verse
       def initialize(values:, post_processors: nil)
         super(post_processors:)
 
-        @values    = values.transform_values{ |v| v.is_a?(Array) ? v : [v] }
-      end
-
-      def transform(&block)
-        callback = proc do |value, error_builder|
-          stop if error_builder.errors.any?
-          instance_exec(value, error_builder, &block)
-        end
-
-        @post_processors ||= IDENTITY_PP.dup
-        @post_processors.attach(
-          PostProcessor.new(&callback)
-        )
+        @values = values.transform_values{ |v| v.is_a?(Array) ? v : [v] }
       end
 
       def validate(input, error_builder: nil, locals: {})
@@ -51,7 +39,7 @@ module Verse
       end
 
       def dup
-        Base.new(
+        Selector.new(
           values: @values.dup,
           post_processors: @post_processors&.dup
         )
@@ -107,6 +95,30 @@ module Verse
           values: new_classes,
           post_processors: new_post_processors
         )
+      end
+
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        @dataclass_schema.values = @dataclass_schema.values.transform_values do |value|
+          if value.is_a?(Array)
+            value.map do |v|
+              if v.is_a?(Base)
+                v.dataclass_schema
+              else
+                v
+              end
+            end
+          elsif value.is_a?(Base)
+            value.dataclass_schema
+          else
+            value
+          end
+        end
+
+        @dataclass_schema
       end
 
       protected

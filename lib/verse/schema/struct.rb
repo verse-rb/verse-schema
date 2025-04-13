@@ -9,7 +9,7 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Struct < Base
-      attr_reader :fields
+      attr_accessor :fields
 
       # Initialize a new schema.
       #
@@ -57,9 +57,11 @@ module Verse
         field(field_name, type, **opts, &block).optional
       end
 
+      # rubocop:disable Style/OptionalBooleanParameter
       def extra_fields(value = true)
         @extra_fields = !!value
       end
+      # rubocop:enable Style/OptionalBooleanParameter
 
       def extra_fields? = @extra_fields
 
@@ -158,75 +160,91 @@ module Verse
         new_schema
       end
 
-      # Need data structure
-      if RUBY_VERSION >= "3.2.0"
-        # Represent a dataclass using schema internally
-        def dataclass(&block)
-          schema = self
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
 
-          @dataclass ||= Data.define(
-            *fields.map(&:name)
-          ) do
-            bare_new = singleton_method(:new)
+        @dataclass_schema = dup
 
-            define_singleton_method(:from_raw) do |hash|
-              # Set optional unset fields to `nil`
-              (schema.fields.map(&:name) - hash.keys).map{ |k| hash[k] = nil }
+        @dataclass_schema.fields = @dataclass_schema.fields.map do |field|
+          type = field.type
 
-              bare_new.call(**hash)
-            end
+          if type.is_a?(Array)
+            Field.new(
+              field.name,
+              type.map do |t|
+                next t unless t.is_a?(Base)
 
-            define_singleton_method(:new_sub_dataclass) do |type, value|
-              next value unless type.is_a?(Struct)
-              next value unless value.is_a?(Hash)
-
-              type.dataclass.unvalidated_new(**value)
-            end
-
-            define_singleton_method(:unvalidated_new) do |value|
-              schema.fields.each do |f|
-                name = f.name
-
-                # Prevent issue with optional fields
-                # and required fields in Data structure
-                if !value.key?(name)
-                  value[name] = nil
-                  next
-                end
-
-                value[name] = new_sub_dataclass(f.type, value[name])
-              end
-
-              bare_new.call(**value)
-            end
-
-            define_singleton_method(:new) do |*args, **hash|
-              if args.size > 1
-                raise ArgumentError, "wrong number of arguments (given #{args.size}, expected 0..1)"
-              end
-
-              if args.size == 1 && !hash.empty?
-                raise ArgumentError, "wrong number of arguments (given 1, expected 0 with hash)"
-              end
-
-              if args.size == 1
-                hash = args.first
-              end
-
-              result = schema.validate(hash)
-
-              unless result.success?
-                raise InvalidSchemaError, result.errors
-              end
-
-              value = result.value
-
-              unvalidated_new(value)
-            end
-
-            class_eval(&block) if block_given?
+                t.dataclass_schema
+              end,
+              field.opts.dup,
+              post_processors: field.post_processors&.dup
+            )
+          elsif type.is_a?(Base)
+            Field.new(
+              field.name,
+              type.dataclass_schema,
+              field.opts.dup,
+              post_processors: field.post_processors&.dup
+            )
+          else
+            field.dup
           end
         end
+
+        this = self
+        fields_map = fields.map(&:name)
+
+        @dataclass_schema.transform do |value|
+          next value unless value.is_a?(Hash)
+
+          if this.extra_fields?
+            standard_fields = value.slice(*fields_map)
+            extra_fields = value.except(*fields_map)
+
+            this.dataclass.from_raw(**standard_fields, extra_fields:)
+          else
+            this.dataclass.from_raw(**value)
+          end
+        end
+      end
+
+      # Create a value object class from the schema.
+      def dataclass(&block)
+        return @dataclass if @dataclass
+
+        fields = @fields.map(&:name)
+
+        dataclass_schema = self.dataclass_schema
+
+        fields << :extra_fields if extra_fields?
+
+        value_object = ::Struct.new(*fields, keyword_init: true) do
+          # Redefine new method
+          define_singleton_method(:from_raw, &method(:new))
+
+          define_singleton_method(:new) do |*args, **kwargs|
+            # Use the schema to generate the hash for our record
+            if args.size > 1
+              raise ArgumentError, "You cannot pass more than one argument"
+            end
+
+            if args.size == 1
+              if kwargs.any?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
+
+              kwargs = args.first
+            end
+
+            dataclass_schema.new(kwargs)
+          end
+
+          define_singleton_method(:schema){ dataclass_schema }
+
+          class_eval(&block) if block
+        end
+
+        @dataclass = value_object
       end
 
       protected
