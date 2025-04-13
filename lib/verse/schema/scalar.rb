@@ -52,7 +52,7 @@ module Verse
         parent_schema.values.all? do |parent_value|
           @values.any? do |child_value|
             if (child_value.is_a?(Base) && parent_value.is_a?(Base)) ||
-                (child_value.is_a?(Class) && parent_value.is_a?(Class))
+               (child_value.is_a?(Class) && parent_value.is_a?(Class))
               puts "#{child_value} <= #{parent_value}: #{child_value <= parent_value}"
               # Both are schema instances, use their inherit? method
               child_value <= parent_value
@@ -107,11 +107,9 @@ module Verse
         values = @dataclass_schema.values
 
         @dataclass_schema.values = values.map do |value|
-          if value.is_a?(Base)
-            value.dataclass_schema
-          else
-            value
-          end
+          next value unless value.is_a?(Base)
+
+          value.dataclass_schema
         end
 
         @dataclass_schema

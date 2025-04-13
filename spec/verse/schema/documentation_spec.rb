@@ -1135,6 +1135,100 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(root.children.map(&:value)).to eq(["Child 1", "Child 2"])
       expect(root.children[0].children).to be_empty
     end
+
+    it "works with dictionary, array, scalar and selector too" do
+      schema = Verse::Schema.define do
+        field(:name, String)
+        field(:type, Symbol).in?(%i[student teacher])
+
+        teacher_data = define do
+          field(:subject, String)
+          field(:years_of_experience, Integer)
+        end
+
+        student_data = define do
+          field(:grade, Integer)
+          field(:school, String)
+        end
+
+        # Selector
+        field(:data, { student: student_data, teacher: teacher_data }, over: :type)
+
+        # Array of Scalar
+        comment_schema = define do
+          field(:text, String)
+          field(:created_at, Time)
+        end
+
+        # Verbose but to test everything.
+        field(:comment, Verse::Schema.array(
+          Verse::Schema.scalar(String, comment_schema)
+        ))
+
+        score_schema = define do
+          field(:a, Integer)
+          field(:b, Integer)
+        end
+
+        # Dictionary
+        field(:scores, Hash, of: score_schema)
+      end
+
+      # Get the dataclass:
+      # rubocop:disable Lint/ConstantDefinitionInBlock
+      Person = schema.dataclass
+      # rubocop:enable Lint/ConstantDefinitionInBlock
+
+      # Create a valid instance
+      person = Person.new({
+        name: "John Doe",
+        type: :student,
+        data: {
+          grade: 10,
+          school: "High School"
+        },
+        comment: [
+          { text: "Great job!", created_at: "2023-01-01T12:00:00Z" },
+          "This is a comment"
+        ],
+        scores: {
+          math: { a: 90.5, b: 95 },
+          science: { a: 85, b: 88 }
+        }
+      })
+
+      expect(person.data.grade).to eq(10)
+      expect(person.data.school).to eq("High School")
+      expect(person.comment[0].text).to eq("Great job!")
+      expect(person.comment[0].created_at).to be_a(Time)
+      expect(person.comment[1]).to eq("This is a comment")
+      expect(person.scores[:math].a).to eq(90)
+
+      # Invalid schema
+
+      expect {
+        Person.new({
+          name: "Invalid Person",
+          type: :student,
+          data: {
+            subject: "Math", # Invalid field for student
+            years_of_experience: 5 # Invalid field for student
+          },
+          comment: [
+            { text: "Great job!", created_at: "2023-01-01T12:00:00Z" },
+            "This is a comment"
+          ],
+          scores: {
+            math: { a: 90.5, b: 95 },
+            science: { a: 85, b: 88 }
+          }
+        })
+      }.to raise_error(Verse::Schema::InvalidSchemaError).with_message(
+        "Invalid schema:\n" \
+        "data.grade: [\"is required\"]\n" \
+        "data.school: [\"is required\"]"
+      )
+    end
   end
 
   context "Field Extensions", :readme_section do

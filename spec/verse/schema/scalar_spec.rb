@@ -78,7 +78,7 @@ RSpec.describe Verse::Schema::Scalar do
     context "with error_builder" do
       it "uses provided ErrorBuilder" do
         error_builder = Verse::Schema::ErrorBuilder.new("root")
-        result = integer_schema.validate("abc", error_builder: error_builder)
+        result = integer_schema.validate("abc", error_builder:)
         expect(result.success?).to be false
         expect(result.errors).to eq({ root: ["must be an integer"] })
       end
@@ -103,7 +103,7 @@ RSpec.describe Verse::Schema::Scalar do
       it "does not apply post_processor on failure" do
         processor_called = false
         schema = Verse::Schema::Scalar.new(values: [Integer])
-        schema.transform { |_v| processor_called = true; _v + 1 }
+        schema.transform { |v| processor_called = true; v + 1 }
 
         result = schema.validate("abc")
         expect(result.success?).to be false

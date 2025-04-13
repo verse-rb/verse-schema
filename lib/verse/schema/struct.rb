@@ -169,11 +169,25 @@ module Verse
           type = field.type
 
           if type.is_a?(Array)
-            field.type(type.map{ |t| t.is_a?(Base) ? t.dataclass_schema : t })
+            Field.new(
+              field.name,
+              type.map do |t|
+                next t unless t.is_a?(Base)
+
+                t.dataclass_schema
+              end,
+              field.opts.dup,
+              post_processors: field.post_processors&.dup
+            )
           elsif type.is_a?(Base)
-            field.type(type.dataclass_schema)
+            Field.new(
+              field.name,
+              type.dataclass_schema,
+              field.opts.dup,
+              post_processors: field.post_processors&.dup
+            )
           else
-            field
+            field.dup
           end
         end
 

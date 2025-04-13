@@ -8,9 +8,7 @@ module Verse
   module Schema
     # A field in a schema
     class Field
-      NOTHING = Object.new.freeze
-
-      attr_reader :opts, :post_processors
+      attr_reader :opts, :post_processors, :name, :type
 
       def initialize(name, type, opts, post_processors: nil, &block)
         @name = name
@@ -52,8 +50,6 @@ module Verse
 
         @type = type
       end
-
-      attr_chainable :name, :type
 
       # Set the field as optional. This will validate schema where the
       # field key is missing.

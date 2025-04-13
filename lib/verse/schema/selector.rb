@@ -17,7 +17,7 @@ module Verse
       def initialize(values:, post_processors: nil)
         super(post_processors:)
 
-        @values    = values.transform_values{ |v| v.is_a?(Array) ? v : [v] }
+        @values = values.transform_values{ |v| v.is_a?(Array) ? v : [v] }
       end
 
       def validate(input, error_builder: nil, locals: {})
@@ -39,7 +39,7 @@ module Verse
       end
 
       def dup
-        Base.new(
+        Selector.new(
           values: @values.dup,
           post_processors: @post_processors&.dup
         )
@@ -117,6 +117,8 @@ module Verse
             value
           end
         end
+
+        @dataclass_schema
       end
 
       protected
