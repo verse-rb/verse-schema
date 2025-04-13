@@ -5,7 +5,7 @@ require_relative "./base"
 module Verse
   module Schema
     class Scalar < Base
-      attr_reader :values
+      attr_accessor :values
 
       # Initialize a new schema.
       #
@@ -85,6 +85,30 @@ module Verse
           values: new_classes,
           post_processors: new_post_processors
         )
+      end
+
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        values = @dataclass_schema.values
+
+        if values.is_a?(Array)
+          @dataclass_schema.values = values.map do |value|
+            if value.is_a?(Base)
+              value.dataclass_schema
+            else
+              value
+            end
+          end
+        else
+          if values.is_a?(Base)
+            @dataclass_schema.values = values.dataclass_schema
+          end
+        end
+
+        @dataclass_schema
       end
 
       protected

@@ -1076,6 +1076,7 @@ RSpec.describe "Verse::Schema Documentation", :readme do
                           })
 
       # The nested address is also a data class
+      $debug = true
       expect(person.address).to be_a(Address)
       expect(person.address.street).to eq("123 Main St")
       expect(person.address.city).to eq("Anytown")

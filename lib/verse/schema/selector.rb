@@ -5,7 +5,7 @@ require_relative "./base"
 module Verse
   module Schema
     class Selector < Base
-      attr_reader :values
+      attr_accessor :values
 
       # Initialize a new selector schema.
       # Selector schema will select a subset of the input based on the provided values.
@@ -107,6 +107,30 @@ module Verse
           values: new_classes,
           post_processors: new_post_processors
         )
+      end
+
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        @dataclass_schema.values = @dataclass_schema.values.transform_values do |value|
+          if value.is_a?(Array)
+            value.map do |v|
+              if v.is_a?(Base)
+                v.dataclass_schema
+              else
+                v
+              end
+            end
+          else
+            if value.is_a?(Base)
+              value.dataclass_schema
+            else
+              value
+            end
+          end
+        end
       end
 
       protected

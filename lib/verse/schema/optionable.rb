@@ -3,7 +3,7 @@
 module Verse
   module Schema
     module Optionable
-      NOTHING = Object.new
+      NOTHING = Object.new.freeze
 
       def self.included(base)
         base.extend ClassMethods

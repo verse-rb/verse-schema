@@ -5,12 +5,11 @@ require_relative "./result"
 require_relative "./error_builder"
 require_relative "./post_processor"
 require_relative "./invalid_schema_error"
-require_relative "./value_object_builder"
 
 module Verse
   module Schema
     class Struct < Base
-      attr_reader :fields
+      attr_accessor :fields
 
       # Initialize a new schema.
       #
@@ -159,17 +158,49 @@ module Verse
         new_schema
       end
 
+      def dataclass_schema
+        return @dataclass_schema if @dataclass_schema
+
+        @dataclass_schema = dup
+
+        @dataclass_schema.fields = @dataclass_schema.fields.map do |field|
+          type = field.type
+
+          if type.is_a?(Array)
+            field.type(type.map{ |t| t.is_a?(Base) ? t.dataclass_schema : t })
+          elsif type.is_a?(Base)
+            field.type(type.dataclass_schema)
+          else
+            field
+          end
+        end
+
+        this = self
+        fields_map = fields.map(&:name)
+
+        @dataclass_schema.transform do |value|
+          next value unless value.is_a?(Hash)
+
+          if this.extra_fields?
+            standard_fields = value.slice(*fields_map)
+            extra_fields = value.except(*fields_map)
+
+            this.dataclass.from_raw(**standard_fields, extra_fields:)
+          else
+            this.dataclass.from_raw(**value)
+          end
+        end
+      end
+
       # Create a value object class from the schema.
       def dataclass(&block)
         return @dataclass if @dataclass
 
         fields = @fields.map(&:name)
 
-        value_object_schema = ValueObjectBuilder.build(self)
+        dataclass_schema = self.dataclass_schema
 
-        has_extra_fields = extra_fields?
-
-        fields << :extra_fields if has_extra_fields
+        fields << :extra_fields if extra_fields?
 
         value_object = ::Struct.new(*fields, keyword_init: true) do
           # Redefine new method
@@ -189,20 +220,10 @@ module Verse
               kwargs = args.first
             end
 
-            output = value_object_schema.new(kwargs)
-            binding.pry
-
-            if has_extra_fields
-              standard_fields = kwargs.slice(*fields[0..-2])
-              extra_fields = kwargs.except(*fields[0..-2])
-
-              from_raw(**standard_fields, extra_fields:)
-            else
-              from_raw(**kwargs)
-            end
+            dataclass_schema.new(kwargs)
           end
 
-          define_singleton_method(:schema){ value_object_schema }
+          define_singleton_method(:schema){ dataclass_schema }
 
           class_eval(&block) if block
         end
