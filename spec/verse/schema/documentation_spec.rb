@@ -35,7 +35,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       invalid_result.success? # => false
       invalid_result.errors # => {age: ["must be 18 or older"]}
 
-      # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({ name: "John", age: 18 })
       expect(invalid_result.success?).to be false
@@ -73,7 +72,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # Now nil is valid
       schema_with_nil.validate({ name: "John", age: nil }).success? # => true
 
-      # For testing
       expect(schema.validate({ name: "John" }).success?).to be true
       expect(schema.validate({ name: "John", age: 17 }).success?).to be false
       expect(schema.validate({ name: "John", age: 17 }).errors).to eq({ age: ["must be 18 or older"] })
@@ -137,7 +135,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       schema3.validate({}).success? # => false
       schema3.validate({}).errors # => {type: ["is required"]}
 
-      # For testing
       expect(schema1.validate({}).value).to eq({ type: "reply" })
       expect(schema2.validate({}).value).to eq({ type: "reply" })
       expect(schema3.validate({}).success?).to be false
@@ -185,9 +182,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
         }
       }).success? # => true
 
-      # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({ data: { name: "John", age: 30 } })
+
       expect(nested_schema2.validate({
         data: {
           name: "John",
@@ -230,7 +227,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       invalid_result.success? # => false
       invalid_result.errors # => { "data.1.age": ["must be 18 or older"] }
 
-      # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({
         data: [
@@ -279,7 +275,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       result2.success? # => true
 
-      # For testing
       expect(result.success?).to be true
       expect(result.value).to eq({ data: [1, 2, 3] })
       expect(result2.success?).to be true
@@ -316,7 +311,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # The validated data maintains the same structure
       # but with any coercions or transformations applied
 
-      # For testing
       expect(result.success?).to be true
     end
   end

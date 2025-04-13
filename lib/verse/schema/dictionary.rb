@@ -140,6 +140,10 @@ module Verse
           error_builder.add(key, e.message, **locals)
         end
 
+        if @post_processors && error_builder.errors.empty?
+          output = @post_processors.call(output, nil, error_builder, **locals)
+        end
+
         Result.new(output, error_builder.errors)
       end
     end

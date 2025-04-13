@@ -26,29 +26,46 @@ module Verse
             raise ArgumentError, "cannot pass `of` and a block at the same time"
           end
 
-          # Define sub_schema:
-          nested_schema = Verse::Schema.define(&block)
-        end
+          if type != Hash && type != Object && type != Array
+            raise ArgumentError, "block can only be used with Hash, Object or Array type"
+          end
 
-        if [Hash, Object].include?(type)
-          if of_arg # dictionary
-            type = Schema.dictionary(*of_arg)
-          elsif nested_schema
-            type = nested_schema
+          nested_schema = Schema.define(&block)
+
+          if type == Array
+            self.type(
+              Schema.array(nested_schema)
+            )
+          else
+            self.type(nested_schema)
           end
+        else
+          self.type(type)
+        end
+      end
+
+      def type(type = Nothing, of: Nothing, over: Nothing)
+        return @type if type == Nothing
+
+        @opts[:of] = of if of != Nothing
+        @opts[:over] = over if over != Nothing
+
+        of_arg = @opts[:of] # For array and dictionary
+        of_arg = [of_arg] unless of_arg.nil? || of_arg.is_a?(Array)
+
+        if type == Hash || type == Object
+          type = Schema.dictionary(*of_arg) if of_arg # dictionary
         elsif type == Array
-          if of_arg
-            type = Schema.array(*of_arg)
-          elsif nested_schema
-            type = Schema.array(nested_schema)
-          end
-        elsif type.is_a?(Hash)
-          opts[:over] => Symbol
+          type = Schema.array(*of_arg) if of_arg
+        elsif type.is_a?(Hash) # Selector structure
+          @opts[:over] => Symbol # Ensure there is an over field
 
           type = Schema.selector(**type)
         end
 
         @type = type
+
+        self
       end
 
       # Set the field as optional. This will validate schema where the
