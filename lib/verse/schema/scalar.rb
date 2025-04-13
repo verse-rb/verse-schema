@@ -38,7 +38,7 @@ module Verse
       end
 
       def dup
-        Collection.new(
+        Scalar.new(
           values: @values.dup,
           post_processors: @post_processors&.dup
         )
@@ -68,9 +68,9 @@ module Verse
 
       # Aggregation of two schemas.
       def +(other)
-        raise ArgumentError, "aggregate must be a collection" unless other.is_a?(Collection)
+        raise ArgumentError, "aggregate must be a scalar" unless other.is_a?(Scalar)
 
-        new_classes = @values + other.values
+        new_classes = (@values + other.values).uniq
         new_post_processors = @post_processors&.dup
 
         if other.post_processors
@@ -81,7 +81,7 @@ module Verse
           end
         end
 
-        Collection.new(
+        Scalar.new(
           values: new_classes,
           post_processors: new_post_processors
         )
@@ -129,6 +129,10 @@ module Verse
           end
         rescue Coalescer::Error => e
           error_builder.add(nil, e.message, **locals)
+        end
+
+        if @post_processors && error_builder.errors.empty?
+          coalesced_value = @post_processors.call(coalesced_value, nil, error_builder, **locals)
         end
 
         Result.new(coalesced_value, error_builder.errors)

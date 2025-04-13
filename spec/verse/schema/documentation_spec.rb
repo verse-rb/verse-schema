@@ -100,15 +100,13 @@ RSpec.describe "Verse::Schema Documentation", :readme do
 
       # Validate data with the original key
       result1 = schema.validate({
-        name: "John",
-        age: 30,
+        firstName: "John",
         email_address: "john@example.tld"
       })
       result1.success? # => true
 
       expect(result1.value).to eq({
         name: "John",
-        age: 30,
         email: "john@example.tld"
       })
     end
