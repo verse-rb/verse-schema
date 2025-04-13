@@ -18,23 +18,28 @@ module Verse
       end
 
       def rule(fields = nil, message = "rule failed", &block)
-        @post_processors ||= IDENTITY_PP.dup
-        @post_processors.attach(
-          PostProcessor.new do |value, error|
-            case block.arity
-            when 1, -1, -2 # -1/-2 are for dealing with &:method block.
-              error.add(fields, message) unless instance_exec(value, &block)
-            when 2
-              error.add(fields, message) unless instance_exec(value, error, &block)
-            else
-              # :nocov:
-              raise ArgumentError, "invalid block arity"
-              # :nocov:
-            end
-
-            value
+        pp = PostProcessor.new do |value, error|
+          case block.arity
+          when 1, -1, -2 # -1/-2 are for dealing with &:method block.
+            error.add(fields, message) unless instance_exec(value, &block)
+          when 2
+            error.add(fields, message) unless instance_exec(value, error, &block)
+          else
+            # :nocov:
+            raise ArgumentError, "invalid block arity"
+            # :nocov:
           end
-        )
+
+          value
+        end
+
+        if @post_processors
+          @post_processors.attach(pp)
+        else
+          @post_processors = pp
+        end
+
+        self
       end
 
       def transform(&block)
@@ -43,10 +48,13 @@ module Verse
           instance_exec(value, error_builder, &block)
         end
 
-        @post_processors ||= IDENTITY_PP.dup
-        @post_processors.attach(
-          PostProcessor.new(&callback)
-        )
+        if @post_processors
+          @post_processors.attach(
+            PostProcessor.new(&callback)
+          )
+        else
+          @post_processors = PostProcessor.new(&callback)
+        end
 
         self
       end

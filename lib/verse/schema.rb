@@ -10,12 +10,10 @@ module Verse
     require_relative "schema/coalescer"
     require_relative "schema/post_processor"
 
-    IDENTITY_PP = PostProcessor.new { |value| value }
-
     def define(from = nil, &block)
       if from
         schema = from.dup
-        schema.instance_eval(&block)
+        schema.instance_eval(&block) if block_given?
         schema
       else
         Struct.new(&block)

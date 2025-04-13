@@ -17,18 +17,6 @@ module Verse
         @values    = values
       end
 
-      def transform(&block)
-        callback = proc do |value, error_builder|
-          stop if error_builder.errors.any?
-          instance_exec(value, error_builder, &block)
-        end
-
-        @post_processors ||= IDENTITY_PP.dup
-        @post_processors.attach(
-          PostProcessor.new(&callback)
-        )
-      end
-
       def validate(input, error_builder: nil, locals: {})
         locals = locals.dup # Ensure they are not modified
 

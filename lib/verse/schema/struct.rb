@@ -218,33 +218,41 @@ module Verse
 
         fields << :extra_fields if extra_fields?
 
-        value_object = ::Struct.new(*fields, keyword_init: true) do
-          # Redefine new method
-          define_singleton_method(:from_raw, &method(:new))
+        # Special case for empty schema (yeah, I know, it happens in my production code...)
+        if fields.empty?
+          @dataclass = Class.new do
+            def self.from_raw(*)=new
+            def self.schema = dataclass_schema
 
-          define_singleton_method(:new) do |*args, **kwargs|
-            # Use the schema to generate the hash for our record
-            if args.size > 1
-              raise ArgumentError, "You cannot pass more than one argument"
-            end
+            class_eval(&block) if block
+          end
+        else
+          @dataclass = ::Struct.new(*fields, keyword_init: true) do
+            # Redefine new method
+            define_singleton_method(:from_raw, &method(:new))
 
-            if args.size == 1
-              if kwargs.any?
-                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+            define_singleton_method(:new) do |*args, **kwargs|
+              # Use the schema to generate the hash for our record
+              if args.size > 1
+                raise ArgumentError, "You cannot pass more than one argument"
               end
 
-              kwargs = args.first
+              if args.size == 1
+                if kwargs.any?
+                  raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+                end
+
+                kwargs = args.first
+              end
+
+              dataclass_schema.new(kwargs)
             end
 
-            dataclass_schema.new(kwargs)
+            define_singleton_method(:schema){ dataclass_schema }
+
+            class_eval(&block) if block
           end
-
-          define_singleton_method(:schema){ dataclass_schema }
-
-          class_eval(&block) if block
         end
-
-        @dataclass = value_object
       end
 
       protected
