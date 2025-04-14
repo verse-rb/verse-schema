@@ -63,7 +63,15 @@ module Verse
         when Time
           value
         when String
-          Time.parse(value)
+          # Optimization: Try specific format first, fallback to general parse
+          begin
+            # Attempt fast parsing with the common format used in JSON
+            format = "%Y-%m-%d %H:%M:%S"
+            Time.strptime(value, format)
+          rescue ArgumentError # Raised by strptime on format mismatch
+            # Fallback to slower, more general parsing if strptime failed
+            Time.parse(value)
+          end
         else
           raise Coalescer::Error, "must be a datetime"
         end

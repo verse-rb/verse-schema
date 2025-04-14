@@ -81,11 +81,71 @@ it "demonstrates basic schema validation" do
   invalid_result.success? # => false
   invalid_result.errors # => {age: ["must be 18 or older"]}
 
-  # For testing
   expect(result.success?).to be true
   expect(result.value).to eq({ name: "John", age: 18 })
   expect(invalid_result.success?).to be false
   expect(invalid_result.errors).to eq({ age: ["must be 18 or older"] })
+end
+
+```
+
+
+### Coalescer rules
+
+
+```ruby
+it "demonstrates coalescer rules" do
+  # Verse::Schema is opiniated and we try to coalesce
+  # the data to the type of the field:
+
+  schema = Verse::Schema.define do
+    field(:name, String)
+    field(:age, Integer)
+  end
+
+  # Coalescer will try to coerce the data to the type
+  # of the field. So if you pass a string, it will
+  # try to convert it to an integer.
+  result = schema.validate({ name: 1, age: "18" })
+
+  expect(result.success?).to be true
+  expect(result.value).to eq({ name: "1", age: 18 })
+end
+
+```
+
+```ruby
+it "quick match if the class of the input is the same as the field" do
+  # If the input is of the same class as the field,
+  # it will be a quick match and no coercion will be
+  # performed.
+  schema = Verse::Schema.define do
+    field(:age, [Integer, Float])
+  end
+
+  result = schema.validate({ age: 18.0 })
+
+  expect(result.success?).to be true
+  expect(result.value[:age]).to be_a(Float)
+end
+
+```
+
+```ruby
+it "stops when finding a good candidate" do
+  # If you have multiple types in the field, it will
+  # stop when it finds a good candidate.
+  schema = Verse::Schema.define do
+    field(:age, [Float, Integer])
+  end
+
+  result = schema.validate({ age: "18" })
+
+  expect(result.success?).to be true
+  # It was able to coalesce to Float first
+  # In this case, it would be judicious to define the field
+  # as [Integer, Float] to avoid this behavior
+  expect(result.value[:age]).to be_a(Float)
 end
 
 ```
@@ -124,7 +184,6 @@ it "demonstrates optional field usage" do
   # Now nil is valid
   schema_with_nil.validate({ name: "John", age: nil }).success? # => true
 
-  # For testing
   expect(schema.validate({ name: "John" }).success?).to be true
   expect(schema.validate({ name: "John", age: 17 }).success?).to be false
   expect(schema.validate({ name: "John", age: 17 }).errors).to eq({ age: ["must be 18 or older"] })
@@ -198,7 +257,6 @@ it "demonstrates default field values" do
   schema3.validate({}).success? # => false
   schema3.validate({}).errors # => {type: ["is required"]}
 
-  # For testing
   expect(schema1.validate({}).value).to eq({ type: "reply" })
   expect(schema2.validate({}).value).to eq({ type: "reply" })
   expect(schema3.validate({}).success?).to be false
@@ -251,9 +309,9 @@ it "demonstrates nested schema usage" do
     }
   }).success? # => true
 
-  # For testing
   expect(result.success?).to be true
   expect(result.value).to eq({ data: { name: "John", age: 30 } })
+
   expect(nested_schema2.validate({
     data: {
       name: "John",
@@ -301,7 +359,6 @@ it "demonstrates array of schemas" do
   invalid_result.success? # => false
   invalid_result.errors # => { "data.1.age": ["must be 18 or older"] }
 
-  # For testing
   expect(result.success?).to be true
   expect(result.value).to eq({
     data: [
@@ -355,7 +412,6 @@ it "demonstrates array of any type" do
 
   result2.success? # => true
 
-  # For testing
   expect(result.success?).to be true
   expect(result.value).to eq({ data: [1, 2, 3] })
   expect(result2.success?).to be true
@@ -397,7 +453,6 @@ it "demonstrates recursive schema" do
   # The validated data maintains the same structure
   # but with any coercions or transformations applied
 
-  # For testing
   expect(result.success?).to be true
 end
 
@@ -1269,7 +1324,6 @@ end
 
 ```ruby
 it "works with dictionary, array, scalar and selector too" do
-
   schema = Verse::Schema.define do
     field(:name, String)
     field(:type, Symbol).in?(%i[student teacher])
@@ -1285,7 +1339,7 @@ it "works with dictionary, array, scalar and selector too" do
     end
 
     # Selector
-    field(:data, {student: student_data, teacher: teacher_data }, over: :type)
+    field(:data, { student: student_data, teacher: teacher_data }, over: :type)
 
     # Array of Scalar
     comment_schema = define do
@@ -1334,7 +1388,6 @@ it "works with dictionary, array, scalar and selector too" do
   expect(person.comment[0].created_at).to be_a(Time)
   expect(person.comment[1]).to eq("This is a comment")
   expect(person.scores[:math].a).to eq(90)
-
 
   # Invalid schema
 

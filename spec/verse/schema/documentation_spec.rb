@@ -42,6 +42,57 @@ RSpec.describe "Verse::Schema Documentation", :readme do
     end
   end
 
+  context "Coalescer rules", :readme_section do
+    it "demonstrates coalescer rules" do
+      # Verse::Schema is opiniated and we try to coalesce
+      # the data to the type of the field:
+
+      schema = Verse::Schema.define do
+        field(:name, String)
+        field(:age, Integer)
+      end
+
+      # Coalescer will try to coerce the data to the type
+      # of the field. So if you pass a string, it will
+      # try to convert it to an integer.
+      result = schema.validate({ name: 1, age: "18" })
+
+      expect(result.success?).to be true
+      expect(result.value).to eq({ name: "1", age: 18 })
+    end
+
+    it "quick match if the class of the input is the same as the field" do
+      # If the input is of the same class as the field,
+      # it will be a quick match and no coercion will be
+      # performed.
+      schema = Verse::Schema.define do
+        field(:age, [Integer, Float])
+      end
+
+      result = schema.validate({ age: 18.0 })
+
+      expect(result.success?).to be true
+      expect(result.value[:age]).to be_a(Float)
+    end
+
+    it "stops when finding a good candidate" do
+      # If you have multiple types in the field, it will
+      # stop when it finds a good candidate.
+      schema = Verse::Schema.define do
+        field(:age, [Float, Integer])
+      end
+
+      result = schema.validate({ age: "18" })
+
+      expect(result.success?).to be true
+      # It was able to coalesce to Float first
+      # In this case, it would be judicious to define the field
+      # as [Integer, Float] to avoid this behavior
+      expect(result.value[:age]).to be_a(Float)
+    end
+
+  end
+
   context "Optional Fields", :readme_section do
     it "demonstrates optional field usage" do
       # Optional field using field?

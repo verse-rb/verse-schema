@@ -38,11 +38,17 @@ module Verse
 
         def transform(value, type, opts = {}, locals: {})
           if type.is_a?(Array)
+            # fast-path for when the type match already
+            type.each do |t|
+              return value if t.is_a?(Class) && value.is_a?(t)
+            end
+
             converted = nil
 
             last_error_message = nil
 
             found = false
+
             type.each do |t|
               converted = @mapping.fetch(t) do
                 DEFAULT_MAPPER.call(t)

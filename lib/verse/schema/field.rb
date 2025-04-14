@@ -348,6 +348,8 @@ module Verse
 
       # :nodoc:
       def apply(value, output, error_builder, locals)
+        locals[:__path__].push(@name)
+
         if @type.is_a?(Base)
           error_builder.context(@name) do |error_builder|
             result = @type.validate(value, error_builder:, locals:)
@@ -382,6 +384,8 @@ module Verse
         end
       rescue Coalescer::Error => e
         error_builder.add(@name, e.message, **locals)
+      ensure
+        locals[:__path__].pop
       end
     end
   end

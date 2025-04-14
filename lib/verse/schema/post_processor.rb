@@ -46,13 +46,10 @@ module Verse
 
         has_error = error_builder.errors.any?
 
-        if @next
-          @next.call(output, key, error_builder, **locals)
-        elsif has_error
-          value
-        else
-          output
-        end
+        return value if has_error
+        return output unless @next
+
+        @next.call(output, key, error_builder, **locals)
       end
     end
   end

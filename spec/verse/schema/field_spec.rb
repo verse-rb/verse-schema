@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "spec_helper"
+require_relative "../../spec_helper"
 
 RSpec.describe Verse::Schema::Field do
   let(:integer_scalar) { Verse::Schema::Scalar.new(values: [Integer]) }

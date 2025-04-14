@@ -39,6 +39,8 @@ module Verse
       end
 
       def field(field_name, type = Object, **opts, &block)
+        @cache_field_name = nil
+
         if opts[:over] && @fields.none?{ |f| f.name == opts[:over] }
           # Ensure the `over` field exists and is
           # already defined.
@@ -68,8 +70,6 @@ module Verse
       def valid?(input) = validate(input).success?
 
       def validate(input, error_builder: nil, locals: {})
-        locals = locals.dup # Ensure they are not modified
-
         error_builder = \
           case error_builder
           when String
@@ -84,6 +84,8 @@ module Verse
           error_builder.add(nil, "must be a hash")
           return Result.new({}, error_builder.errors)
         end
+
+        locals = locals.dup # Ensure they are not modified
 
         validate_hash(input, error_builder, locals)
       end
@@ -272,44 +274,28 @@ module Verse
       def validate_hash(input, error_builder, locals)
         locals[:__path__] ||= []
 
-        output = {}
+        input = input.transform_keys(&:to_sym)
+        output = @extra_fields ? input : {}
 
-        checked_fields = []
+        @cache_field_name ||= @fields.map(&:key)
 
         @fields.each do |field|
-          key_s = field.key.to_s
-          key_sym = key_s.to_sym
-
-          checked_fields << key_s << key_sym
+          key_sym = field.key
 
           exists = true
-          value = input.fetch(key_sym) { input.fetch(key_s) { exists = false } }
+          value = input.fetch(key_sym) { exists = false }
 
-          begin
-            locals[:__path__].push(key_sym)
-
-            if field.opts[:over]
-              locals[:selector] = output[field.opts[:over]]
-            end
-
-            if exists
-              field.apply(value, output, error_builder, locals)
-            elsif field.default?
-              field.apply(field.default, output, error_builder, locals)
-            elsif field.required?
-              error_builder.add(field.key, "is required")
-            end
-          ensure
-            # This is more performant than creating new array everytime,
-            # but the local structure must be duplicated.
-            locals[:__path__].pop
+          if (over = field.opts[:over])
+            locals[:selector] = output[over]
           end
-        end
 
-        if @extra_fields
-          output.merge!(
-            input.except(*checked_fields).transform_keys(&:to_sym)
-          )
+          if exists
+            field.apply(value, output, error_builder, locals)
+          elsif field.default?
+            field.apply(field.default, output, error_builder, locals)
+          elsif field.required?
+            error_builder.add(field.key, "is required")
+          end
         end
 
         if @post_processors && error_builder.errors.empty?

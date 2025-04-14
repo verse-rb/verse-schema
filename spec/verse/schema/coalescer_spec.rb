@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require_relative "../../spec_helper"
+
 RSpec.describe Verse::Schema::Coalescer do
   subject { Verse::Schema::Coalescer }
   context "#transform" do
