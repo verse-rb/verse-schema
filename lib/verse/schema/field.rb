@@ -257,16 +257,33 @@ module Verse
 
       # Check whether the field is matching the condition of the parent field.
       def inherit?(parent_field)
-        case @type
-        when Array
-          # @type must be a superset of parent.
-          # not easy to do, FIXME
-          # :nocov:
-          raise NotImplementedError, "inheritance check with multiple type field not supported yet."
-          # :nocov:
-        else
+        child_type = @type
+        parent_type = parent_field.type
+
+        case child_type
+        when Array # Child is a union type
+          # Normalize parent type to an array for consistent comparison
+          parent_types_array = parent_type.is_a?(Array) ? parent_type : [parent_type]
+
+          # Every type in the child union must be a subtype of at least one type in the parent definition
+          child_type.all? do |c_type|
+            parent_types_array.any? do |p_type|
+              # Use standard Ruby class inheritance check.
+              # Handle Verse::Schema types if they appear in unions (though less common for basic types)
+              if c_type.is_a?(Verse::Schema::Base) && p_type.is_a?(Verse::Schema::Base)
+                c_type <= p_type
+              elsif c_type.is_a?(Class) && p_type.is_a?(Class)
+                 # Handle NilClass specifically if needed, otherwise standard inheritance
+                 c_type <= p_type
+              else
+                # Incompatible comparison (e.g., Class vs Schema::Base)
+                false
+              end
+            end
+          end
+        else # Child is a single type (Class or Verse::Schema::Base)
           # wrong type
-          return false unless @type <= parent_field.type
+          return false unless child_type <= parent_type
 
           if parent_field.opts[:schema]
             @type == Hash &&
