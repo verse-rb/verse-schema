@@ -45,11 +45,24 @@ module Verse
       end
 
       def inherit?(parent_schema)
-        # Check if parent_schema is a Base and if all parent fields are present in this schema
-        parent_schema.is_a?(Collection) &&
-          (
-            parent_schema.values & @values
-          ).size == parent_schema.values.size
+        # Check if parent_schema is a Collection
+        return false unless parent_schema.is_a?(Collection)
+
+        # If the child collection allows nothing (@values empty), it trivially inherits from any parent collection.
+        return true if @values.empty?
+        # If the parent collection allows nothing, but the child allows something, it cannot inherit.
+        return false if parent_schema.values.empty?
+
+        # Check if *every* type allowed by this child collection (`@values`)...
+        @values.all? do |child_type|
+          # ...is a subtype (`<=`) of *at least one* type allowed by the parent collection.
+          parent_schema.values.any? do |parent_type|
+            # Use the existing `<=` operator defined on schema types (Scalar, Struct, etc.)
+            # This assumes the `<=` operator correctly handles class inheritance (e.g., Integer <= Object)
+            # and schema type compatibility.
+            child_type <= parent_type
+          end
+        end
       end
 
       def <=(other)

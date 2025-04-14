@@ -20,6 +20,8 @@ module Verse
         errors.empty?
       end
 
+      alias_method :valid?, :success?
+
       def fail?
         !success?
       end
