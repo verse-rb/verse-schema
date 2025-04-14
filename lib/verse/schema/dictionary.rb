@@ -107,6 +107,14 @@ module Verse
         @dataclass_schema
       end
 
+      def inspect
+        # Keys are always symbols, so only show value types.
+        # Handle cases where values might be arrays (unions) or schema objects.
+        value_types_string = (@values || [Object]).map(&:inspect).join("|")
+
+        "#<dictionary<#{value_types_string}> 0x#{object_id.to_s(16)}>"
+      end
+
       protected
 
       def validate_dictionary(input, error_builder, locals)
@@ -146,6 +154,7 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
+
     end
   end
 end

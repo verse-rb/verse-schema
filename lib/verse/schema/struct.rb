@@ -255,6 +255,18 @@ module Verse
         end
       end
 
+      def inspect
+        fields_string = @fields.map do |field|
+          type_str = field.type.inspect
+          optional_marker = field.optional? ? "?" : ""
+          "#{field.name}#{optional_marker}: #{type_str}"
+        end.join(", ")
+
+        extra = @extra_fields ? ", ..." : ""
+
+        "#<struct{#{fields_string}#{extra}} 0x#{object_id.to_s(16)}>"
+      end
+
       protected
 
       def validate_hash(input, error_builder, locals)
@@ -306,6 +318,7 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
+
     end
   end
 end

@@ -260,44 +260,79 @@ module Verse
         child_type = @type
         parent_type = parent_field.type
 
-        case child_type
-        when Array # Child is a union type
-          # Normalize parent type to an array for consistent comparison
-          parent_types_array = parent_type.is_a?(Array) ? parent_type : [parent_type]
+        # Helper lambda to check subtype relationship between two NON-UNION types
+        is_subtype_single = lambda do |c, p|
+          if c.is_a?(Verse::Schema::Scalar) && p.is_a?(Verse::Schema::Scalar)
+            c.values.all? { |c_val| p.values.any? { |p_val| c_val <= p_val } }
+          elsif c.is_a?(Verse::Schema::Scalar) && p.is_a?(Class)
+            c.values.all? { |c_val| c_val <= p }
+          elsif c.is_a?(Class) && p.is_a?(Verse::Schema::Scalar)
+            p.values.any? { |p_val| c <= p_val }
+          elsif c.is_a?(Verse::Schema::Base) && p.is_a?(Verse::Schema::Base)
+             c <= p
+          elsif c.is_a?(Class) && p.is_a?(Class)
+            c <= p
+          else
+            false # Incompatible types
+          end
+        end
 
-          # Every type in the child union must be a subtype of at least one type in the parent definition
-          child_type.all? do |c_type|
-            parent_types_array.any? do |p_type|
-              # Use standard Ruby class inheritance check.
-              # Handle Verse::Schema types if they appear in unions (though less common for basic types)
-              if c_type.is_a?(Verse::Schema::Base) && p_type.is_a?(Verse::Schema::Base)
-                c_type <= p_type
-              elsif c_type.is_a?(Class) && p_type.is_a?(Class)
-                 # Handle NilClass specifically if needed, otherwise standard inheritance
-                 c_type <= p_type
-              else
-                # Incompatible comparison (e.g., Class vs Schema::Base)
-                false
+        # Determine basic type compatibility based on single/union combinations
+        types_compatible = \
+          if child_type.is_a?(Array) && parent_type.is_a?(Array) # Union <= Union
+            child_type.all? { |c_type| parent_type.any? { |p_type| is_subtype_single.call(c_type, p_type) } }
+          elsif child_type.is_a?(Array) && !parent_type.is_a?(Array) # Union <= Single
+            child_type.all? { |c_type| is_subtype_single.call(c_type, parent_type) }
+          elsif !child_type.is_a?(Array) && parent_type.is_a?(Array) # Single <= Union
+            parent_type.any? { |p_type| is_subtype_single.call(child_type, p_type) }
+          else # Single <= Single
+            is_subtype_single.call(child_type, parent_type)
+          end
+
+        # If basic types are not compatible, inheritance fails immediately.
+        return false unless types_compatible
+
+        # If basic types ARE compatible, proceed with option checks for refinement.
+        if parent_field.opts[:schema]
+          # Parent expects a specific nested schema structure (defined via block)
+          # Child must be compatible (Hash or specific Struct/Dictionary) and its schema must inherit.
+          (child_type.is_a?(Verse::Schema::Struct) || child_type.is_a?(Verse::Schema::Dictionary) || child_type == Hash) &&
+            (
+              !@opts[:schema] || # Child doesn't have a specific block schema (implicitly inherits)
+              @opts[:schema] <= parent_field.opts[:schema] # Child's block schema inherits from parent's
+            )
+        elsif parent_field.opts[:of]
+          # Parent is Collection/Dictionary defined via `of:`
+          parent_of = parent_field.opts[:of]
+          child_of = @opts[:of]
+
+          # If parent expects specific contents (`of:`), child must comply.
+          if parent_of
+            # Child must also specify contents (`of:`) if parent does.
+            return false unless child_of
+
+            # Normalize `of` types to arrays for comparison
+            child_of_array = child_of.is_a?(Array) ? child_of : [child_of]
+            parent_of_array = parent_of.is_a?(Array) ? parent_of : [parent_of]
+
+            # Check if child's `of` types inherit from parent's `of` types (recursive check)
+            # This needs a recursive call to a method that can handle the full inheritance logic,
+            # including the `of` checks. Let's assume `inherit?` can be called recursively here,
+            # or we might need a dedicated helper. For simplicity, let's reuse `is_subtype_single`
+            # for the `of` types for now, assuming `of` usually contains simple types or single schema types.
+            # A more robust solution might need a full recursive `inherit?` check on temporary Field objects.
+            child_of_array.all? do |c_of|
+              parent_of_array.any? do |p_of|
+                is_subtype_single.call(c_of, p_of) # Simplified check for `of` types
               end
             end
-          end
-        else # Child is a single type (Class or Verse::Schema::Base)
-          # wrong type
-          return false unless child_type <= parent_type
-
-          if parent_field.opts[:schema]
-            @type == Hash &&
-              (
-                !@opts[:schema] ||
-                @opts[:schema] <= parent_field.opts[:schema]
-              )
-          elsif parent_field.opts[:of]
-            # Open array / dictionary OR the type of `of` inherit of
-            # the parent.
-            !@opts[:of] || @opts[:of] <= parent_field.opts[:of]
           else
+            # Parent does not specify `of`, so child is compatible regardless of its `of`.
             true
           end
+        else
+          # Parent is not a block schema and not defined with `of:`. Basic type compatibility is enough.
+          true
         end
       end
 

@@ -122,6 +122,12 @@ module Verse
         @dataclass_schema
       end
 
+      def inspect
+        types_string = @values.map(&:inspect).join("|")
+        # Use ::collection to distinguish from Scalar's inspect
+        "#<collection<#{types_string}> 0x#{object_id.to_s(16)}>"
+      end
+
       protected
 
       def validate_array(input, error_builder, locals)
@@ -163,6 +169,7 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
+
     end
   end
 end

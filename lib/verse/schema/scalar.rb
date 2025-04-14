@@ -115,6 +115,11 @@ module Verse
         @dataclass_schema
       end
 
+      def inspect
+        types_string = @values.map(&:inspect).join("|")
+        "#<scalar<#{types_string}> 0x#{object_id.to_s(16)}>"
+      end
+
       protected
 
       def validate_scalar(input, error_builder, locals)
@@ -143,6 +148,7 @@ module Verse
 
         Result.new(coalesced_value, error_builder.errors)
       end
+
     end
   end
 end
