@@ -88,7 +88,7 @@ RSpec.describe "Rules and Post Processing", :readme do
   end
 
   context "Rules", :readme_section do
-    it "demonstrates global rules" do
+    it "demonstrates per schema rules" do
       # Multiple fields rule
       multiple_field_rule_schema = Verse::Schema.define do
         field(:name, String)

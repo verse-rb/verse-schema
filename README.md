@@ -865,7 +865,7 @@ end
 
 
 ```ruby
-it "demonstrates global rules" do
+it "demonstrates per schema rules" do
   # Multiple fields rule
   multiple_field_rule_schema = Verse::Schema.define do
     field(:name, String)
