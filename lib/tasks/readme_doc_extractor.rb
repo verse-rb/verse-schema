@@ -4,10 +4,10 @@ require "rspec"
 require "erb"
 
 class ReadmeDocExtractor
-  attr_reader :examples
+  attr_reader :chapters
 
   def initialize
-    @examples = {}
+    @chapters = {}
   end
 
   # Extract documentation from specs tagged with :readme
@@ -24,20 +24,20 @@ class ReadmeDocExtractor
     # Run the specs and collect examples
     run_specs(readme_specs)
 
-    # Return the examples organized by section
-    @examples
+    # Return the chapters organized hierarchically
+    @chapters
   end
 
-  # Generate README content from the extracted examples and a template
+  # Generate README content from the extracted chapters and a template
   def generate_readme(template_path)
     # Load the template
     template = File.read(template_path)
 
-    # Create a binding with the examples
-    examples_binding = binding
+    # Create a binding with the chapters
+    chapters_binding = binding
 
     # Render the template with ERB
-    ERB.new(template, trim_mode: "-").result(examples_binding)
+    ERB.new(template, trim_mode: "-").result(chapters_binding)
   end
 
   private
@@ -67,30 +67,32 @@ class ReadmeDocExtractor
     readme_specs.map { |group| [group, group.examples] }.to_h
   end
 
-  # Run the specs and collect examples
+  # Run the specs and collect examples into chapters and sections
   def run_specs(readme_specs)
     readme_specs.each_key do |group|
-      group_examples = collect_examples_from_group(group)
-      @examples.merge!(group_examples) if group_examples
+      collect_chapter_from_group(group)
     end
   end
 
-  # Collect examples from a group
-  def collect_examples_from_group(group)
-    puts "Collecting examples from group: #{group.description}"
-    return nil unless group.metadata[:readme]
+  # Collect chapter and its sections from a group
+  def collect_chapter_from_group(group)
+    chapter_name = group.description.to_s
+    puts "Collecting chapter: #{chapter_name}"
+    return unless group.metadata[:readme]
 
-    # Process child groups first (sections)
-    puts "  Group has #{group.children.size} children"
+    @chapters[chapter_name] = {}
+
+    # Process child groups (sections)
+    puts "  Chapter has #{group.children.size} sections (children)"
     group.children.each do |child|
       section_name = child.description.to_s
-      puts "  - Child: #{section_name}, readme_section: #{child.metadata[:readme_section]}"
+      puts "  - Processing section: #{section_name}, readme_section: #{child.metadata[:readme_section]}"
       next unless child.metadata[:readme_section]
 
-      @examples[section_name] ||= []
+      @chapters[chapter_name][section_name] ||= []
 
       # Process examples in this section
-      puts "    Child has #{child.examples.size} examples"
+      puts "    Section has #{child.examples.size} examples"
       child.examples.each do |example|
         puts "    - Example: #{example.description}"
         next if example.metadata[:skip]
@@ -99,17 +101,15 @@ class ReadmeDocExtractor
         code = extract_code_from_example(example)
         if code
           puts "      Extracted code (#{code.lines.count} lines)"
-          @examples[section_name] << code
+          @chapters[chapter_name][section_name] << code
         else
           puts "      No code extracted"
         end
       end
     end
-
-    @examples
   end
 
-  # Extract code from an example
+   # Extract code from an example
   def extract_code_from_example(example)
     # Get the example block directly using instance_variable_get
     example_block = example.instance_variable_get(:@example_block)

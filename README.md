@@ -43,9 +43,85 @@ These building blocks can be nested and combined to define complex data validati
 
 ## Usage
 
-Those examples below are part of the specs of the gem. They are therefore accurate and up to date.
+These examples are extracted directly from the gem's specs, ensuring they are accurate and up-to-date. You can run each example directly in IRB.
 
-Each example can be run directly in IRB.
+### Table of Contents
+
+
+- [1. Basic Usage](#1-basic-usage)
+  
+  - [Simple Usage](#simple-usage)
+  
+  - [Optional Fields](#optional-fields)
+  
+  - [Default Fields](#default-fields)
+  
+  - [Coalescing rules](#coalescing-rules)
+  
+  - [Naming the keys](#naming-the-keys)
+  
+  - [Multiple Types Field](#multiple-types-field)
+  
+  - [Open Hash](#open-hash)
+  
+
+- [2. Complex Structures](#2-complex-structures)
+  
+  - [Nested Schemas](#nested-schemas)
+  
+  - [Array of Schemas](#array-of-schemas)
+  
+  - [Array of Any Type](#array-of-any-type)
+  
+  - [Dictionary Schema](#dictionary-schema)
+  
+  - [Recursive Schema](#recursive-schema)
+  
+  - [Selector Based Type Selection](#selector-based-type-selection)
+  
+
+- [Rules and Post Processing](#rules-and-post-processing)
+  
+  - [Postprocessing](#postprocessing)
+  
+  - [Rules](#rules)
+  
+  - [Locals Variables](#locals-variables)
+  
+
+- [Schema Composition](#schema-composition)
+  
+  - [Schema Factory Methods](#schema-factory-methods)
+  
+  - [Schema Inheritance](#schema-inheritance)
+  
+  - [Schema Aggregation](#schema-aggregation)
+  
+  - [Field Inheritance](#field-inheritance)
+  
+
+- [Under the hood](#under-the-hood)
+  
+  - [Add Custom coalescing rules](#add-custom-coalescing-rules)
+  
+  - [Reflecting on the schema](#reflecting-on-the-schema)
+  
+  - [Field Extensions](#field-extensions)
+  
+
+- [Data classes](#data-classes)
+  
+  - [Using Data Classes](#using-data-classes)
+  
+
+- [Verse::Schema Documentation](#verseschema-documentation)
+  
+  - [Complex Example](#complex-example)
+  
+
+
+
+## 1. Basic Usage
 
 
 ### Simple Usage
@@ -53,15 +129,10 @@ Each example can be run directly in IRB.
 
 ```ruby
 it "demonstrates basic schema validation" do
-  # Define a rule for age validation
-  must_be_major = Verse::Schema.rule("must be 18 or older") do |value|
-    value >= 18
-  end
-
   # Create a schema with name and age fields
   schema = Verse::Schema.define do
     field(:name, String).meta(label: "Name", description: "The name of the person")
-    field(:age, Integer).rule(must_be_major)
+    field(:age, Integer).rule("must be 18 or older"){ |age| age >= 18 }
   end
 
   # Validate data
@@ -85,67 +156,6 @@ it "demonstrates basic schema validation" do
   expect(result.value).to eq({ name: "John", age: 18 })
   expect(invalid_result.success?).to be false
   expect(invalid_result.errors).to eq({ age: ["must be 18 or older"] })
-end
-
-```
-
-
-### Coalescer rules
-
-
-```ruby
-it "demonstrates coalescer rules" do
-  # Verse::Schema is opiniated and we try to coalesce
-  # the data to the type of the field:
-
-  schema = Verse::Schema.define do
-    field(:name, String)
-    field(:age, Integer)
-  end
-
-  # Coalescer will try to coerce the data to the type
-  # of the field. So if you pass a string, it will
-  # try to convert it to an integer.
-  result = schema.validate({ name: 1, age: "18" })
-
-  expect(result.success?).to be true
-  expect(result.value).to eq({ name: "1", age: 18 })
-end
-
-```
-
-```ruby
-it "quick match if the class of the input is the same as the field" do
-  # If the input is of the same class as the field,
-  # it will be a quick match and no coercion will be
-  # performed.
-  schema = Verse::Schema.define do
-    field(:age, [Integer, Float])
-  end
-
-  result = schema.validate({ age: 18.0 })
-
-  expect(result.success?).to be true
-  expect(result.value[:age]).to be_a(Float)
-end
-
-```
-
-```ruby
-it "stops when finding a good candidate" do
-  # If you have multiple types in the field, it will
-  # stop when it finds a good candidate.
-  schema = Verse::Schema.define do
-    field(:age, [Float, Integer])
-  end
-
-  result = schema.validate({ age: "18" })
-
-  expect(result.success?).to be true
-  # It was able to coalesce to Float first
-  # In this case, it would be judicious to define the field
-  # as [Integer, Float] to avoid this behavior
-  expect(result.value[:age]).to be_a(Float)
 end
 
 ```
@@ -196,39 +206,6 @@ end
 ```
 
 
-### Different key for field
-
-
-```ruby
-it "demonstrates using different keys for fields" do
-  # If the key of the input schema is different from the output schema,
-  # you can use the `key` method to specify the key in the input schema
-  # that should be used for the output schema.
-
-  # Define a schema with different keys for fields
-  schema = Verse::Schema.define do
-    # key can be passed as option
-    field(:name, String, key: :firstName)
-    # or using the chainable syntax
-    field(:email, String).key(:email_address)
-  end
-
-  # Validate data with the original key
-  result1 = schema.validate({
-    firstName: "John",
-    email_address: "john@example.tld"
-  })
-  result1.success? # => true
-
-  expect(result1.value).to eq({
-    name: "John",
-    email: "john@example.tld"
-  })
-end
-
-```
-
-
 ### Default Fields
 
 
@@ -264,6 +241,201 @@ it "demonstrates default field values" do
 end
 
 ```
+
+
+### Coalescing rules
+
+
+```ruby
+it "demonstrates coalescer rules" do
+  # Verse::Schema will try  to coalesce the data to the type of the field.
+  # This means that if you pass a string in an Integer field,
+  # it will try to convert it to an integer.
+
+  schema = Verse::Schema.define do
+    field(:name, String)
+    field(:age, Integer)
+  end
+
+  # Coalescer will try to coerce the data to the type
+  # of the field. So if you pass a string, it will
+  # try to convert it to an integer.
+  result = schema.validate({ name: 1, age: "18" })
+
+  expect(result.success?).to be true
+  expect(result.value).to eq({ name: "1", age: 18 })
+end
+
+```
+
+```ruby
+it "quick match if the class of the input is the same as the field" do
+  # If the input is of the same class as the field,
+  # it will be a quick match and no coercion will be
+  # performed.
+  schema = Verse::Schema.define do
+    field(:age, [Integer, Float])
+  end
+
+  result = schema.validate({ age: 18.0 })
+
+  expect(result.success?).to be true
+  expect(result.value[:age]).to be_a(Float)
+end
+
+```
+
+```ruby
+it "stops when finding a good candidate" do
+  # The coalescer go through all the different types in the definition order
+  # and stop when it finds a good candidate.
+  #
+  # The example schema above would never coalesce to Float
+  # because it would find Float first:
+  schema = Verse::Schema.define do
+    field(:age, [Float, Integer])
+  end
+
+  result = schema.validate({ age: "18" })
+
+  expect(result.success?).to be true
+
+  # It was able to coalesce to Float first
+  # In this case, it would be judicious to define the field
+  # as [Integer, Float], Integer being more constrained, to avoid this behavior
+  expect(result.value[:age]).to be_a(Float)
+end
+
+```
+
+
+### Naming the keys
+
+
+```ruby
+it "demonstrates using different keys for fields" do
+  # If the key of the input schema is different from the output schema,
+  # you can use the `key` method to specify the key in the input schema
+  # that should be used for the output schema.
+
+  # Define a schema with different keys for fields
+  schema = Verse::Schema.define do
+    # key can be passed as option
+    field(:name, String, key: :firstName)
+    # or using the chainable syntax
+    field(:email, String).key(:email_address)
+  end
+
+  # Validate data with the original key
+  result1 = schema.validate({
+    firstName: "John",
+    email_address: "john@example.tld"
+  })
+  result1.success? # => true
+
+  expect(result1.value).to eq({
+    name: "John",
+    email: "john@example.tld"
+  })
+end
+
+```
+
+
+### Multiple Types Field
+
+
+```ruby
+it "demonstrates fields that accept multiple types" do
+  # Define a schema that accepts a String or a Nested Schema
+  content_hash = Verse::Schema.define do
+    field(:content, String)
+    field(:created_at, Time)
+  end
+
+  schema = Verse::Schema.define do
+    field(:title, String)
+    field(:content, [String, content_hash])
+  end
+
+  # Validate with a String content
+  result1 = schema.validate({
+    title: "My Post",
+    content: "This is a simple string content"
+  })
+
+  # Validate with a Hash content
+  result2 = schema.validate({
+    title: "My Post",
+    content: {
+      content: "This is a structured content",
+      created_at: "2023-01-01T12:00:00Z"
+    }
+  })
+
+  # Both are valid
+  expect(result1.success?).to be true
+  expect(result2.success?).to be true
+
+  # But invalid content will fail
+  invalid_result = schema.validate({
+    title: "My Post",
+    content: { invalid: "structure" } # Doesn't match `content_hash` schema
+  })
+  expect(invalid_result.success?).to be false
+  # Assuming error messages for missing fields in the nested hash schema
+  expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
+end
+
+```
+
+
+### Open Hash
+
+
+```ruby
+it "demonstrates schemas that allow extra fields" do
+  # By default, schemas are closed, which means that
+  # fields not defined in the schema will be ignored.
+  # To allow extra fields, you can use the `extra_fields` method:
+
+  # Define a schema that allows extra fields
+  schema = Verse::Schema.define do
+    field(:name, String)
+
+    # This allows any additional fields to be included
+    extra_fields
+  end
+
+  # Validate with only the defined fields
+  result1 = schema.validate({
+    name: "John"
+  })
+
+  # Validate with extra fields
+  result2 = schema.validate({
+    name: "John",
+    age: 30,
+    email: "john@example.com"
+  })
+
+  # Both are valid
+  expect(result1.success?).to be true
+  expect(result2.success?).to be true
+
+  # Extra fields are preserved in the output
+  expect(result2.value).to eq({
+    name: "John",
+    age: 30,
+    email: "john@example.com"
+  })
+end
+
+```
+
+
+
+## 2. Complex Structures
 
 
 ### Nested Schemas
@@ -420,6 +592,51 @@ end
 ```
 
 
+### Dictionary Schema
+
+
+```ruby
+it "demonstrates dictionary schemas" do
+  # Define a dictionary schema with Integer values
+  schema = Verse::Schema.define do
+    field(:scores, Hash, of: Integer)
+  end
+
+  # Validate a dictionary
+  result = schema.validate({
+    scores: {
+      math: "95",
+      science: "87",
+      history: 92.0
+    }
+  })
+
+  # The validation succeeds and coerces string values to integers
+  expect(result.success?).to be true
+  expect(result.value).to eq({
+    scores: {
+      math: 95,
+      science: 87,
+      history: 92
+    }
+  })
+
+  # Invalid values will cause validation to fail
+  invalid_result = schema.validate({
+    scores: {
+      math: "95",
+      science: "invalid",
+      history: "92"
+    }
+  })
+  expect(invalid_result.success?).to be false
+  # Assuming error message for type coercion failure in dictionary
+  expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
+end
+
+```
+
+
 ### Recursive Schema
 
 
@@ -457,68 +674,6 @@ it "demonstrates recursive schema" do
 end
 
 ```
-
-
-### Rules
-
-
-```ruby
-it "demonstrates global rules" do
-  # Multiple fields rule
-  multiple_field_rule_schema = Verse::Schema.define do
-    field(:name, String)
-    field(:age, Integer)
-
-    rule(%i[age name], "age must be 18 and name must NOT be John") do |schema|
-      schema[:age] >= 18 && schema[:name] != "John"
-    end
-  end
-
-  # Valid case
-  result1 = multiple_field_rule_schema.validate({
-    name: "Jane",
-    age: 20
-  })
-  expect(result1.success?).to be true
-
-  # Invalid case - rule violation
-  result2 = multiple_field_rule_schema.validate({
-    name: "John",
-    age: 20
-  })
-  expect(result2.success?).to be false
-  expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
-end
-
-```
-
-
-### Locals Variables
-
-
-```ruby
-it "demonstrates locals variables" do
-  schema = Verse::Schema.define do
-    field(:age, Integer).rule("must be greater than %<min_age>s") { |age|
-      age > locals[:min_age]
-    }
-  end
-
-  # Valid case
-  result1 = schema.validate({ age: 22 }, locals: { min_age: 21 })
-  expect(result1.success?).to be true
-
-  # Invalid case
-  result2 = schema.validate({ age: 18 }, locals: { min_age: 21 })
-  expect(result2.success?).to be false
-  expect(result2.errors).to eq({ age: ["must be greater than 21"] })
-end
-
-```
-
-
-### Custom Types
-
 
 
 ### Selector Based Type Selection
@@ -607,6 +762,10 @@ end
 ```
 
 
+
+## Rules and Post Processing
+
+
 ### Postprocessing
 
 
@@ -639,135 +798,171 @@ end
 
 ```
 
+```ruby
+it "demonstrates chaining multiple post processors" do
+  # Create a schema with multiple rules on a field
+  schema = Verse::Schema.define do
+    field(:age, Integer)
+      .rule("must be at least 18") { |age| age >= 18 }
+      .rule("must be under 100") { |age| age < 100 }
+  end
 
-### Multiple Types Field
+  # Valid age
+  result1 = schema.validate({ age: 30 })
+  expect(result1.success?).to be true
 
+  # Too young
+  result2 = schema.validate({ age: 16 })
+  expect(result2.success?).to be false
+  expect(result2.errors).to eq({ age: ["must be at least 18"] })
+
+  # Too old
+  result3 = schema.validate({ age: 120 })
+  expect(result3.success?).to be false
+  expect(result3.errors).to eq({ age: ["must be under 100"] })
+end
+
+```
 
 ```ruby
-it "demonstrates fields that accept multiple types" do
-  # Define a schema that accepts a String or a Hash
-  content_hash = Verse::Schema.define do
-    field(:content, String)
-    field(:created_at, Time)
-  end
-
+it "demonstrates rule with error_builder parameter" do
+  # Create a schema with a rule that uses the error_builder
   schema = Verse::Schema.define do
-    field(:title, String)
-    field(:content, [String, content_hash])
+    field(:data, Hash).rule("must contain required keys") do |data, error_builder|
+      valid = true
+
+      # Check for required keys
+      %w[name email].each do |key|
+        unless data.key?(key.to_sym) || data.key?(key)
+          error_builder.add(:data, "missing required key: #{key}")
+          valid = false
+        end
+      end
+
+      valid
+    end
   end
 
-  # Validate with a String content
-  result1 = schema.validate({
-    title: "My Post",
-    content: "This is a simple string content"
-  })
-
-  # Validate with a Hash content
-  result2 = schema.validate({
-    title: "My Post",
-    content: {
-      content: "This is a structured content",
-      created_at: "2023-01-01T12:00:00Z"
-    }
-  })
-
-  # Both are valid
+  # Valid data
+  result1 = schema.validate({ data: { name: "John", email: "john@example.com" } })
   expect(result1.success?).to be true
-  expect(result2.success?).to be true
 
-  # But invalid content will fail
-  invalid_result = schema.validate({
-    title: "My Post",
-    content: { invalid: "structure" } # Doesn't match `content_hash` schema
-  })
-  expect(invalid_result.success?).to be false
-  # Assuming error messages for missing fields in the nested hash schema
-  expect(invalid_result.errors).to eq({ "content.content": ["is required"], "content.created_at": ["is required"] })
+  # Missing name
+  result2 = schema.validate({ data: { email: "john@example.com" } })
+  expect(result2.success?).to be false
+  expect(result2.errors).to eq({ data: ["missing required key: name", "must contain required keys"] })
+
+  # Missing email
+  result3 = schema.validate({ data: { name: "John" } })
+  expect(result3.success?).to be false
+  expect(result3.errors).to eq({ data: ["missing required key: email", "must contain required keys"] })
 end
 
 ```
 
 
-### Open Hash
+### Rules
 
 
 ```ruby
-it "demonstrates schemas that allow extra fields" do
-  # Define a schema that allows extra fields
-  schema = Verse::Schema.define do
+it "demonstrates global rules" do
+  # Multiple fields rule
+  multiple_field_rule_schema = Verse::Schema.define do
     field(:name, String)
+    field(:age, Integer)
 
-    # This allows any additional fields to be included
-    extra_fields
+    rule(%i[age name], "age must be 18 and name must NOT be John") do |schema|
+      schema[:age] >= 18 && schema[:name] != "John"
+    end
   end
 
-  # Validate with only the defined fields
-  result1 = schema.validate({
-    name: "John"
+  # Valid case
+  result1 = multiple_field_rule_schema.validate({
+    name: "Jane",
+    age: 20
   })
-
-  # Validate with extra fields
-  result2 = schema.validate({
-    name: "John",
-    age: 30,
-    email: "john@example.com"
-  })
-
-  # Both are valid
   expect(result1.success?).to be true
-  expect(result2.success?).to be true
 
-  # Extra fields are preserved in the output
-  expect(result2.value).to eq({
+  # Invalid case - rule violation
+  result2 = multiple_field_rule_schema.validate({
     name: "John",
-    age: 30,
-    email: "john@example.com"
+    age: 20
   })
+  expect(result2.success?).to be false
+  expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
 end
 
 ```
 
 
-### Dictionary Schema
+### Locals Variables
 
 
 ```ruby
-it "demonstrates dictionary schemas" do
-  # Define a dictionary schema with Integer values
+it "demonstrates locals variables" do
   schema = Verse::Schema.define do
-    field(:scores, Hash, of: Integer)
+    field(:age, Integer).rule("must be greater than %<min_age>s") { |age|
+      age > locals[:min_age]
+    }
   end
 
-  # Validate a dictionary
-  result = schema.validate({
-    scores: {
-      math: "95",
-      science: "87",
-      history: 92.0
-    }
-  })
+  # Valid case
+  result1 = schema.validate({ age: 22 }, locals: { min_age: 21 })
+  expect(result1.success?).to be true
 
-  # The validation succeeds and coerces string values to integers
-  expect(result.success?).to be true
-  expect(result.value).to eq({
-    scores: {
-      math: 95,
-      science: 87,
-      history: 92
-    }
-  })
+  # Invalid case
+  result2 = schema.validate({ age: 18 }, locals: { min_age: 21 })
+  expect(result2.success?).to be false
+  expect(result2.errors).to eq({ age: ["must be greater than 21"] })
+end
 
-  # Invalid values will cause validation to fail
-  invalid_result = schema.validate({
-    scores: {
-      math: "95",
-      science: "invalid",
-      history: "92"
-    }
+```
+
+
+
+## Schema Composition
+
+
+### Schema Factory Methods
+
+
+```ruby
+it "demonstrates schema factory methods" do
+  # Verse::Schema offer methods to create array, dictionary, and scalar schemas
+
+  # Define a base item schema
+  item_schema = Verse::Schema.define do
+    field(:name, String)
+  end
+
+  # Create an array schema using the factory method
+  array_schema = Verse::Schema.array(item_schema)
+
+  # Create a dictionary schema using the factory method
+  dictionary_schema = Verse::Schema.dictionary(item_schema)
+
+  # Create a scalar schema using the factory method
+  scalar_schema = Verse::Schema.scalar(Integer, String)
+
+  # Validate using the array schema
+  array_result = array_schema.validate([
+                                         { name: "Item 1" },
+                                         { name: "Item 2" }
+                                       ])
+  expect(array_result.success?).to be true
+
+  # Validate using the dictionary schema
+  dict_result = dictionary_schema.validate({
+    item1: { name: "First Item" },
+    item2: { name: "Second Item" }
   })
-  expect(invalid_result.success?).to be false
-  # Assuming error message for type coercion failure in dictionary
-  expect(invalid_result.errors).to eq({ "scores.science": ["must be an integer"] })
+  expect(dict_result.success?).to be true
+
+  # Validate using the scalar schema
+  scalar_result1 = scalar_schema.validate(42)
+  scalar_result2 = scalar_schema.validate("Hello")
+  expect(scalar_result1.success?).to be true
+  expect(scalar_result2.success?).to be true
 end
 
 ```
@@ -778,6 +973,11 @@ end
 
 ```ruby
 it "demonstrates schema inheritance" do
+  # Schema can inherit from other schemas.
+  # Please be aware that this is not a classical inheritance model,
+  # but rather a structural inheritance model.
+  # In a way, it is similar to traits concept.
+
   # Define a parent schema
   parent = Verse::Schema.define do
     field(:type, Symbol)
@@ -894,6 +1094,55 @@ end
 ```
 
 
+### Schema Aggregation
+
+
+```ruby
+it "demonstrates combining schemas" do
+  # It is sometime useful to combine two schemas into one.
+  # This is done using the `+` operator.
+  # The resulting schema will have all the fields of both schemas.
+  # If the same field is defined in both schemas, the combination will
+  # be performed at the field level, so the field type will be the union
+  # of the two fields.
+  # The rules and post-processing will be combined as well, in such order
+  # that the first schema transforms will be applied first, and then the second one.
+
+  # Define two schemas to combine
+  schema1 = Verse::Schema.define do
+    field(:age, Integer).rule("must be major") { |age|
+      age >= 18
+    }
+  end
+
+  schema2 = Verse::Schema.define do
+    field(:content, [String, Hash])
+  end
+
+  # Combine the schemas
+  combined_schema = schema1 + schema2
+
+  # Validate using the combined schema
+  result = combined_schema.validate({
+    age: 25,
+    content: "Some content"
+  })
+
+  # The validation succeeds
+  expect(result.success?).to be true
+
+  # Invalid data will still fail
+  invalid_result = combined_schema.validate({
+    age: 16, # Too young
+    content: "Some content"
+  })
+  expect(invalid_result.success?).to be false
+  expect(invalid_result.errors).to eq({ age: ["must be major"] })
+end
+
+```
+
+
 ### Field Inheritance
 
 
@@ -952,309 +1201,93 @@ end
 ```
 
 
-### Schema Aggregation
+
+## Under the hood
+
+
+### Add Custom coalescing rules
+
+
+
+### Reflecting on the schema
 
 
 ```ruby
-it "demonstrates combining schemas" do
-  # Define two schemas to combine
-  schema1 = Verse::Schema.define do
-    field(:age, Integer).rule("must be major") { |age|
-      age >= 18
-    }
+it "demonstrates schema reflection" do
+  # It exists 4 schema class type:
+  # 1. Verse::Schema::Struct
+  #   the default schema type, with field definition
+  # 2. Verse::Schema::Array
+  #   a schema that contains an array of items
+  #   `values` attribute being an array of type
+  # 3. Verse::Schema::Dictionary
+  #   a schema that contains a dictionary of items
+  #   `values` attribute being an array of type
+  # 4. Verse::Schema::Selector
+  #   a schema that contains a selector of items
+  #   `values` attribute being a selection hash
+  complex_schema_example = Verse::Schema.define do
+    field(:name, String).meta(label: "Name", description: "The name of the person")
+
+    field(:data) do
+      field(:content, String).filled
+    end
+
+    field(:dictionary, Verse::Schema.dictionary(String))
+    field(:array, Array) do
+      field(:item, [String, Integer])
+    end
   end
 
-  schema2 = Verse::Schema.define do
-    field(:content, [String, Hash])
+  # Inspect is a good way to see the schema definition
+  puts complex_schema_example.inspect
+  # => #<struct{
+  #   name: String,
+  #   data: #<struct{content: String} 0x1400>,
+  #   dictionary: #<dictionary<String> 0x1414>,
+  #       array: #<collection<#<struct{item: String|Integer} 0x1428>> 0x143c>
+  #   } 0x1450>
+
+  # You can reflect on the schema to get information about its fields:
+  expect(complex_schema_example.extra_fields?).to be false
+
+  complex_schema_example.fields.each do |field|
+    puts "Field name: #{field.name}"
+    puts "Field type: #{field.type}"
+    puts "Field metadata: #{field.meta}"
+
+    puts "Is required: #{field.required?}"
   end
 
-  # Combine the schemas
-  combined_schema = schema1 + schema2
-
-  # Validate using the combined schema
-  result = combined_schema.validate({
-    age: 25,
-    content: "Some content"
-  })
-
-  # The validation succeeds
-  expect(result.success?).to be true
-
-  # Invalid data will still fail
-  invalid_result = combined_schema.validate({
-    age: 16, # Too young
-    content: "Some content"
-  })
-  expect(invalid_result.success?).to be false
-  expect(invalid_result.errors).to eq({ age: ["must be major"] })
+  # Of course, you can also traverse the schema tree to get information about nested fields:
+  arr_value = complex_schema_example.fields.find{ |field| field.name == :array }.type.values
+  puts arr_value[0].fields.map(&:name) # => [:item]
 end
 
 ```
 
 
-### Schema Factory Methods
+### Field Extensions
 
 
-```ruby
-it "demonstrates schema factory methods" do
-  # Define a base item schema
-  item_schema = Verse::Schema.define do
-    field(:name, String)
-  end
-
-  # Create an array schema using the factory method
-  array_schema = Verse::Schema.array(item_schema)
-
-  # Create a dictionary schema using the factory method
-  dictionary_schema = Verse::Schema.dictionary(item_schema)
-
-  # Create a scalar schema using the factory method
-  scalar_schema = Verse::Schema.scalar(Integer, String)
-
-  # Validate using the array schema
-  array_result = array_schema.validate([
-                                         { name: "Item 1" },
-                                         { name: "Item 2" }
-                                       ])
-  expect(array_result.success?).to be true
-
-  # Validate using the dictionary schema
-  dict_result = dictionary_schema.validate({
-    item1: { name: "First Item" },
-    item2: { name: "Second Item" }
-  })
-  expect(dict_result.success?).to be true
-
-  # Validate using the scalar schema
-  scalar_result1 = scalar_schema.validate(42)
-  scalar_result2 = scalar_schema.validate("Hello")
-  expect(scalar_result1.success?).to be true
-  expect(scalar_result2.success?).to be true
-end
-
-```
 
 
-### Complex Example
+## Data classes
 
 
-```ruby
-it "demonstrates a comprehensive example" do
-  # Define a complex schema that combines multiple features
-  schema = Verse::Schema.define do
-    # Define nested schemas
-    facebook_event = define do
-      field(:url, String)
-      extra_fields # Allow additional fields
-    end
+### Using Data Classes
 
-    google_event = define do
-      field(:search, String)
-      extra_fields # Allow additional fields
-    end
-
-    # Define an event schema that uses the nested schemas
-    event = define do
-      field(:at, Time)
-      field(:type, Symbol).in?(%i[created updated])
-      field(:provider, String).in?(%w[facebook google])
-      field(:data, [facebook_event, google_event]) # Union type
-      field(:source, String)
-
-      # Conditional validation based on provider
-      rule(:data, "invalid event data structure") do |hash|
-        case hash[:provider]
-        when "facebook"
-          facebook_event.valid?(hash[:data])
-        when "google"
-          google_event.valid?(hash[:data])
-        else
-          false
-        end
-      end
-    end
-
-    # The main schema field is an array of events
-    field(:events, Array, of: event)
-  end
-
-  # Create a complex data structure to validate
-  data = {
-    events: [
-      {
-        at: "2023-01-01T12:00:00Z",
-        type: :created,
-        provider: "facebook",
-        data: {
-          url: "https://facebook.com/event/123",
-          title: "Facebook Event" # Extra field
-        },
-        source: "api"
-      },
-      {
-        at: "2023-01-02T14:30:00Z",
-        type: :updated,
-        provider: "google",
-        data: {
-          search: "conference 2023",
-          location: "New York" # Extra field
-        },
-        source: "webhook"
-      }
-    ]
-  }
-
-  # Validate the complex data
-  result = schema.validate(data)
-
-  # The validation succeeds
-  expect(result.success?).to be true
-
-  # The output maintains the structure with coerced values
-  expect(result.value[:events][0][:at]).to be_a(Time)
-  expect(result.value[:events][1][:at]).to be_a(Time)
-end
-
-```
-
-
-### Post Processors
-
-
-```ruby
-it "demonstrates chaining multiple post processors" do
-  # Create a schema with multiple rules on a field
-  schema = Verse::Schema.define do
-    field(:age, Integer)
-      .rule("must be at least 18") { |age| age >= 18 }
-      .rule("must be under 100") { |age| age < 100 }
-  end
-
-  # Valid age
-  result1 = schema.validate({ age: 30 })
-  expect(result1.success?).to be true
-
-  # Too young
-  result2 = schema.validate({ age: 16 })
-  expect(result2.success?).to be false
-  expect(result2.errors).to eq({ age: ["must be at least 18"] })
-
-  # Too old
-  result3 = schema.validate({ age: 120 })
-  expect(result3.success?).to be false
-  expect(result3.errors).to eq({ age: ["must be under 100"] })
-end
-
-```
-
-```ruby
-it "demonstrates rule with error_builder parameter" do
-  # Create a schema with a rule that uses the error_builder
-  schema = Verse::Schema.define do
-    field(:data, Hash).rule("must contain required keys") do |data, error_builder|
-      valid = true
-
-      # Check for required keys
-      %w[name email].each do |key|
-        unless data.key?(key.to_sym) || data.key?(key)
-          error_builder.add(:data, "missing required key: #{key}")
-          valid = false
-        end
-      end
-
-      valid
-    end
-  end
-
-  # Valid data
-  result1 = schema.validate({ data: { name: "John", email: "john@example.com" } })
-  expect(result1.success?).to be true
-
-  # Missing name
-  result2 = schema.validate({ data: { email: "john@example.com" } })
-  expect(result2.success?).to be false
-  expect(result2.errors).to eq({ data: ["missing required key: name", "must contain required keys"] })
-
-  # Missing email
-  result3 = schema.validate({ data: { name: "John" } })
-  expect(result3.success?).to be false
-  expect(result3.errors).to eq({ data: ["missing required key: email", "must contain required keys"] })
-end
-
-```
-
-
-### Data Classes
-
-
-```ruby
-it "demonstrates using schemas to create data classes" do
-  # Define a schema for a person
-  person_schema = Verse::Schema.define do
-    field(:name, String)
-    field(:age, Integer).rule("must be at least 18") { |age| age >= 18 }
-    field(:email, String).rule("must be a valid email") { |email| email.include?("@") }
-  end
-
-  # Create a data class from the schema
-  Person = person_schema.dataclass do
-    # You can add methods to the data class
-    def adult?
-      age >= 21
-    end
-
-    def greeting
-      "Hello, #{name}!"
-    end
-  end
-
-  # Create a valid instance
-  person = Person.new({
-    name: "John Doe",
-    age: 30,
-    email: "john@example.com"
-  })
-
-  # Access fields as methods
-  expect(person.name).to eq("John Doe")
-  expect(person.age).to eq(30)
-  expect(person.email).to eq("john@example.com")
-
-  # Use custom methods
-  expect(person.adult?).to be true
-  expect(person.greeting).to eq("Hello, John Doe!")
-
-  # Data classes have value semantics
-  person2 = Person.new({
-    name: "John Doe",
-    age: 30,
-    email: "john@example.com"
-  })
-  expect(person).to eq(person2)
-
-  # Invalid data raises an error
-  expect {
-    Person.new({
-      name: "Young Person",
-      age: 16, # Too young
-      email: "young@example.com"
-    })
-  }.to raise_error(Verse::Schema::InvalidSchemaError)
-
-  # You can create from raw hash without validation
-  raw_person = Person.from_raw({
-    name: "Raw Person",
-    age: 16, # Would normally be invalid
-    email: "raw@example.com"
-  })
-  expect(raw_person.name).to eq("Raw Person")
-  expect(raw_person.age).to eq(16)
-end
-
-```
 
 ```ruby
 it "demonstrates nested data classes" do
+  # Data classes allow you to create structured data objects from schemas.
+  # This can be very useful to avoid hash nested key access
+  # which tends to make your code less readable.
+  #
+  # Under the hood, dataclass will take your schema, duplicate it
+  # and for each field with nested Verse::Schema::Base, it will
+  # add a transformer to convert the value to the dataclass of the schema.
+
   # Data class will automatically use dataclass of other nested schemas.
   # Define a schema for an address
   address_schema = Verse::Schema.define do
@@ -1290,6 +1323,12 @@ it "demonstrates nested data classes" do
   expect(person.address.street).to eq("123 Main St")
   expect(person.address.city).to eq("Anytown")
   expect(person.address.zip).to eq("12345")
+
+  # In case you find some weird behavior, you can always check
+  # the schema of the dataclass.
+  # The dataclass schema used to generate the dataclass
+  # can be found in the class itself:
+  expect(Person.schema).to be_a(Verse::Schema::Struct)
 end
 
 ```
@@ -1418,7 +1457,91 @@ end
 ```
 
 
-### Field Extensions
+
+## Verse::Schema Documentation
+
+
+### Complex Example
+
+
+```ruby
+it "demonstrates a comprehensive example" do
+  # Define a complex schema that combines multiple features
+  schema = Verse::Schema.define do
+    # Define nested schemas
+    facebook_event = define do
+      field(:url, String)
+      extra_fields # Allow additional fields
+    end
+
+    google_event = define do
+      field(:search, String)
+      extra_fields # Allow additional fields
+    end
+
+    # Define an event schema that uses the nested schemas
+    event = define do
+      field(:at, Time)
+      field(:type, Symbol).in?(%i[created updated])
+      field(:provider, String).in?(%w[facebook google])
+      field(:data, [facebook_event, google_event]) # Union type
+      field(:source, String)
+
+      # Conditional validation based on provider
+      rule(:data, "invalid event data structure") do |hash|
+        case hash[:provider]
+        when "facebook"
+          facebook_event.valid?(hash[:data])
+        when "google"
+          google_event.valid?(hash[:data])
+        else
+          false
+        end
+      end
+    end
+
+    # The main schema field is an array of events
+    field(:events, Array, of: event)
+  end
+
+  # Create a complex data structure to validate
+  data = {
+    events: [
+      {
+        at: "2023-01-01T12:00:00Z",
+        type: :created,
+        provider: "facebook",
+        data: {
+          url: "https://facebook.com/event/123",
+          title: "Facebook Event" # Extra field
+        },
+        source: "api"
+      },
+      {
+        at: "2023-01-02T14:30:00Z",
+        type: :updated,
+        provider: "google",
+        data: {
+          search: "conference 2023",
+          location: "New York" # Extra field
+        },
+        source: "webhook"
+      }
+    ]
+  }
+
+  # Validate the complex data
+  result = schema.validate(data)
+
+  # The validation succeeds
+  expect(result.success?).to be true
+
+  # The output maintains the structure with coerced values
+  expect(result.value[:events][0][:at]).to be_a(Time)
+  expect(result.value[:events][1][:at]).to be_a(Time)
+end
+
+```
 
 
 

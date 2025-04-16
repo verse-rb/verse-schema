@@ -259,7 +259,12 @@ module Verse
 
       def inspect
         fields_string = @fields.map do |field|
-          type_str = field.type.inspect
+          if field.type.is_a?(Array)
+            type_str = field.type.map(&:inspect).join("|")
+          else
+            type_str = field.type.inspect
+          end
+
           optional_marker = field.optional? ? "?" : ""
           "#{field.name}#{optional_marker}: #{type_str}"
         end.join(", ")

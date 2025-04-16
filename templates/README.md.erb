@@ -43,17 +43,28 @@ These building blocks can be nested and combined to define complex data validati
 
 ## Usage
 
-Those examples below are part of the specs of the gem. They are therefore accurate and up to date.
+These examples are extracted directly from the gem's specs, ensuring they are accurate and up-to-date. You can run each example directly in IRB.
 
-Each example can be run directly in IRB.
+### Table of Contents
 
-<% examples.each do |section_name, section_examples| %>
+<% chapters.each do |chapter_name, sections| %>
+- [<%= chapter_name %>](#<%= chapter_name.downcase.gsub(/[^a-z0-9\s-]/, '').gsub(/\s+/, '-') %>)
+  <% sections.each do |section_name, _| %>
+  - [<%= section_name %>](#<%= section_name.downcase.gsub(/[^a-z0-9\s-]/, '').gsub(/\s+/, '-') %>)
+  <% end %>
+<% end %>
+
+<% chapters.each do |chapter_name, sections| %>
+## <%= chapter_name %>
+
+<% sections.each do |section_name, section_examples| %>
 ### <%= section_name %>
 
 <% section_examples.each do |example| %>
 ```ruby
 <%= example %>
 ```
+<% end %>
 <% end %>
 <% end %>
 
