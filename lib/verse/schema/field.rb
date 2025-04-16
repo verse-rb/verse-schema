@@ -214,7 +214,7 @@ module Verse
             end
           when PostProcessor
             rule.opts[:key] = key
-            rule
+            rule.dup
           else
             # :nocov:
             raise ArgumentError, "invalid rule type #{rule}"

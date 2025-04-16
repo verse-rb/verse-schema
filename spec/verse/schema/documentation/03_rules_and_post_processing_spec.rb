@@ -114,6 +114,43 @@ RSpec.describe "Rules and Post Processing", :readme do
       expect(result2.success?).to be false
       expect(result2.errors).to eq({ age: ["age must be 18 and name must NOT be John"], name: ["age must be 18 and name must NOT be John"] })
     end
+
+    it "demonstrates reusable rules defined with Verse::Schema.rule" do
+      # Define a reusable rule object
+      is_positive = Verse::Schema.rule("must be positive") { |value| value > 0 }
+
+      # Define another reusable rule
+      is_even = Verse::Schema.rule("must be even") { |value| value.even? }
+
+      # Create a schema that uses the reusable rules
+      schema = Verse::Schema.define do
+        field(:quantity, Integer)
+          .rule(is_positive)
+          .rule(is_even)
+
+        field(:price, Float)
+          .rule(is_positive) # Reuse the same rule
+      end
+
+      # Valid case
+      result1 = schema.validate({ quantity: 10, price: 9.99 })
+      expect(result1.success?).to be true
+
+      # Invalid quantity (negative)
+      result2 = schema.validate({ quantity: -2, price: 9.99 })
+      expect(result2.success?).to be false
+      expect(result2.errors).to eq({ quantity: ["must be positive"] })
+
+      # Invalid quantity (odd)
+      result3 = schema.validate({ quantity: 5, price: 9.99 })
+      expect(result3.success?).to be false
+      expect(result3.errors).to eq({ quantity: ["must be even"] })
+
+      # Invalid price (zero)
+      result4 = schema.validate({ quantity: 10, price: 0.0 })
+      expect(result4.success?).to be false
+      expect(result4.errors).to eq({ price: ["must be positive"] })
+    end
   end
 
   context "Locals Variables", :readme_section do
