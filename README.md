@@ -1714,6 +1714,15 @@ end
 
 
 
+## License
+
+The gem is available as open source under the terms of the [MIT License](https://opensource.org/licenses/MIT).
+
+## Sponsorship
+
+This gem was made possible thanks to the support of [Ingedata](https://ingedata.ai).
+In Ingedata, we build expert teams to support and enhance delivery of your data projects.
+
 ## Contributing
 
 Bug reports and pull requests are welcome on GitHub at https://github.com/verse-rb/verse-schema.
