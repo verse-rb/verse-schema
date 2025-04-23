@@ -8,7 +8,7 @@ module Verse
   module Schema
     # A field in a schema
     class Field
-      attr_reader :opts, :post_processors, :name, :type
+      attr_reader :opts, :post_processors, :name
 
       def initialize(name, type, opts, post_processors: nil, &block)
         @name = name
