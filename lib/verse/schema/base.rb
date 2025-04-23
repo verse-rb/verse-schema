@@ -14,7 +14,7 @@ module Verse
 
       # Initialize a new schema.
       def initialize(post_processors: nil)
-        @post_processors   = post_processors
+        @post_processors = post_processors
       end
 
       def rule(fields = nil, message = "rule failed", &block)

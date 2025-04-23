@@ -53,7 +53,7 @@ module Verse
         of_arg = @opts[:of] # For array and dictionary
         of_arg = [of_arg] unless of_arg.nil? || of_arg.is_a?(Array)
 
-        if type == Hash || type == Object
+        if [Hash, Object].include?(type)
           type = Schema.dictionary(*of_arg) if of_arg # dictionary
         elsif type == Array
           type = Schema.array(*of_arg) if of_arg
@@ -269,7 +269,7 @@ module Verse
           elsif c.is_a?(Class) && p.is_a?(Verse::Schema::Scalar)
             p.values.any? { |p_val| c <= p_val }
           elsif c.is_a?(Verse::Schema::Base) && p.is_a?(Verse::Schema::Base)
-             c <= p
+            c <= p
           elsif c.is_a?(Class) && p.is_a?(Class)
             c <= p
           else

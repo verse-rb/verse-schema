@@ -108,7 +108,6 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       # 3. Define a builder schema. The best way to do this is to use the
       # scalar type:
       builder_schema = Verse::Schema.scalar(Hash).transform do |input, error_builder|
-
         type = input[:type]
 
         if type.respond_to?(:to_sym)
@@ -119,14 +118,14 @@ RSpec.describe "Verse::Schema Documentation", :readme do
         end
 
         schema = case type
-                  when :facebook
-                    facebook_schema
-                  when :google
-                    google_schema
-                  else
-                    error_builder.add(:type, "invalid type")
-                    stop
-                  end
+                 when :facebook
+                   facebook_schema
+                 when :google
+                   google_schema
+                 else
+                   error_builder.add(:type, "invalid type")
+                   stop
+                 end
 
         # Validate the input against the selected schema
         result = schema.validate(input, error_builder:)
@@ -195,9 +194,9 @@ RSpec.describe "Verse::Schema Documentation", :readme do
       expect(invalid_result.success?).to be false
       # The errors are collected
       expect(invalid_result.errors).to eq({
-        :"events.0.url" => ["is required"],
-        :"events.1.location" => ["is required"],
-        :"events.2.type" => ["invalid type"]
+        "events.0.url": ["is required"],
+        "events.1.location": ["is required"],
+        "events.2.type": ["invalid type"]
       })
     end
   end

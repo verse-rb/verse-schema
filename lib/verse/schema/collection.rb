@@ -170,7 +170,6 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
-
     end
   end
 end

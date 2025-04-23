@@ -221,49 +221,49 @@ module Verse
         fields << :extra_fields if extra_fields?
 
         # Special case for empty schema (yeah, I know, it happens in my production code...)
-        if fields.empty?
-          @dataclass = Class.new do
-            def self.from_raw(*)=new
-            def self.schema = dataclass_schema
+        @dataclass = if fields.empty?
+                       Class.new do
+                         def self.from_raw(*)=new
+                         def self.schema = dataclass_schema
 
-            class_eval(&block) if block
-          end
-        else
-          @dataclass = ::Struct.new(*fields, keyword_init: true) do
-            # Redefine new method
-            define_singleton_method(:from_raw, &method(:new))
+                         class_eval(&block) if block
+                       end
+                     else
+                       ::Struct.new(*fields, keyword_init: true) do
+                         # Redefine new method
+                         define_singleton_method(:from_raw, &method(:new))
 
-            define_singleton_method(:new) do |*args, **kwargs|
-              # Use the schema to generate the hash for our record
-              if args.size > 1
-                raise ArgumentError, "You cannot pass more than one argument"
-              end
+                         define_singleton_method(:new) do |*args, **kwargs|
+                           # Use the schema to generate the hash for our record
+                           if args.size > 1
+                             raise ArgumentError, "You cannot pass more than one argument"
+                           end
 
-              if args.size == 1
-                if kwargs.any?
-                  raise ArgumentError, "You cannot pass both a hash and keyword arguments"
-                end
+                           if args.size == 1
+                             if kwargs.any?
+                               raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+                             end
 
-                kwargs = args.first
-              end
+                             kwargs = args.first
+                           end
 
-              dataclass_schema.new(kwargs)
-            end
+                           dataclass_schema.new(kwargs)
+                         end
 
-            define_singleton_method(:schema){ dataclass_schema }
+                         define_singleton_method(:schema){ dataclass_schema }
 
-            class_eval(&block) if block
-          end
-        end
+                         class_eval(&block) if block
+                       end
+                     end
       end
 
       def inspect
         fields_string = @fields.map do |field|
-          if field.type.is_a?(Array)
-            type_str = field.type.map(&:inspect).join("|")
-          else
-            type_str = field.type.inspect
-          end
+          type_str = if field.type.is_a?(Array)
+                       field.type.map(&:inspect).join("|")
+                     else
+                       field.type.inspect
+                     end
 
           optional_marker = field.optional? ? "?" : ""
           "#{field.name}#{optional_marker}: #{type_str}"
@@ -320,7 +320,6 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
-
     end
   end
 end

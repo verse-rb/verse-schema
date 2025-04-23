@@ -109,7 +109,7 @@ class ReadmeDocExtractor
     end
   end
 
-   # Extract code from an example
+  # Extract code from an example
   def extract_code_from_example(example)
     # Get the example block directly using instance_variable_get
     example_block = example.instance_variable_get(:@example_block)

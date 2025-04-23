@@ -103,15 +103,15 @@ RSpec.describe Verse::Schema::Field do
         expect(field_raw_int.inherit?(field_scalar_int)).to be(true)
       end
 
-       it "returns true when Scalar's type inherits from raw Class" do
+      it "returns true when Scalar's type inherits from raw Class" do
         # Scalar<Integer> <= Object should be true
         expect(field_scalar_int.inherit?(field_raw_obj)).to be(true)
       end
 
       it "returns true when raw Class inherits from Scalar's type" do
-         # Integer <= Scalar<Object> should be true
-         field_scalar_obj = Verse::Schema::Field.new(:data, Verse::Schema::Scalar.new(values: [Object]), {})
-         expect(field_raw_int.inherit?(field_scalar_obj)).to be(true)
+        # Integer <= Scalar<Object> should be true
+        field_scalar_obj = Verse::Schema::Field.new(:data, Verse::Schema::Scalar.new(values: [Object]), {})
+        expect(field_raw_int.inherit?(field_scalar_obj)).to be(true)
       end
 
       it "returns false when types mismatch (Scalar vs Class)" do
@@ -123,21 +123,21 @@ RSpec.describe Verse::Schema::Field do
       end
 
       it "handles union containing Scalar vs raw Class" do
-         # [Scalar<Integer>] <= Integer should be true (matches the user's error case)
-         expect(field_union_scalar_int.inherit?(field_raw_int)).to be(true)
-         # Integer <= [Scalar<Integer>] should be true
-         expect(field_raw_int.inherit?(field_union_scalar_int)).to be(true)
-         # [Scalar<Integer>] <= String should be false
-         expect(field_union_scalar_int.inherit?(field_raw_str)).to be(false)
+        # [Scalar<Integer>] <= Integer should be true (matches the user's error case)
+        expect(field_union_scalar_int.inherit?(field_raw_int)).to be(true)
+        # Integer <= [Scalar<Integer>] should be true
+        expect(field_raw_int.inherit?(field_union_scalar_int)).to be(true)
+        # [Scalar<Integer>] <= String should be false
+        expect(field_union_scalar_int.inherit?(field_raw_str)).to be(false)
       end
 
       it "handles Scalar containing union vs raw Class" do
-         # Scalar<Integer|String> <= Integer should be false (Integer is not a supertype of String)
-         expect(field_scalar_int_str.inherit?(field_raw_int)).to be(false)
-         # Scalar<Integer|String> <= Object should be true
-         expect(field_scalar_int_str.inherit?(field_raw_obj)).to be(true)
-         # Integer <= Scalar<Integer|String> should be true
-         expect(field_raw_int.inherit?(field_scalar_int_str)).to be(true)
+        # Scalar<Integer|String> <= Integer should be false (Integer is not a supertype of String)
+        expect(field_scalar_int_str.inherit?(field_raw_int)).to be(false)
+        # Scalar<Integer|String> <= Object should be true
+        expect(field_scalar_int_str.inherit?(field_raw_obj)).to be(true)
+        # Integer <= Scalar<Integer|String> should be true
+        expect(field_raw_int.inherit?(field_scalar_int_str)).to be(true)
       end
     end
   end

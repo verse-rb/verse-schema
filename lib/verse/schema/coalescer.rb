@@ -10,7 +10,7 @@ module Verse
       DEFAULT_MAPPER = lambda do |type|
         if type.is_a?(Base)
           proc do |value, _opts, locals:, strict:|
-            type.validate(value, locals:,  strict:)
+            type.validate(value, locals:, strict:)
           end
         elsif type.is_a?(Class)
           proc do |value|

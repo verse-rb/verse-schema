@@ -14,7 +14,7 @@ module Verse
       def initialize(values:, post_processors: nil)
         super(post_processors:)
 
-        @values    = values
+        @values = values
       end
 
       def validate(input, error_builder: nil, locals: {}, strict: false)
@@ -155,7 +155,6 @@ module Verse
 
         Result.new(output, error_builder.errors)
       end
-
     end
   end
 end

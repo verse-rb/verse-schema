@@ -120,7 +120,7 @@ RSpec.describe "Rules and Post Processing", :readme do
       is_positive = Verse::Schema.rule("must be positive") { |value| value > 0 }
 
       # Define another reusable rule
-      is_even = Verse::Schema.rule("must be even") { |value| value.even? }
+      is_even = Verse::Schema.rule("must be even", &:even?)
 
       # Create a schema that uses the reusable rules
       schema = Verse::Schema.define do

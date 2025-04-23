@@ -149,7 +149,6 @@ module Verse
 
         Result.new(coalesced_value, error_builder.errors)
       end
-
     end
   end
 end

@@ -29,10 +29,10 @@ RSpec.describe Verse::Schema::Collection do
     end
 
     it "returns false when parent allows fewer types (more specific)" do
-       child_schema = Verse::Schema::Collection.new(values: [object_scalar])
-       parent_schema = Verse::Schema::Collection.new(values: [integer_scalar])
+      child_schema = Verse::Schema::Collection.new(values: [object_scalar])
+      parent_schema = Verse::Schema::Collection.new(values: [integer_scalar])
 
-       expect(child_schema <= parent_schema).to be(false)
+      expect(child_schema <= parent_schema).to be(false)
     end
 
     it "handles multiple types correctly (inheritance)" do
@@ -43,7 +43,7 @@ RSpec.describe Verse::Schema::Collection do
       expect(child_schema <= parent_schema).to be(true)
     end
 
-     it "handles multiple types correctly (no inheritance)" do
+    it "handles multiple types correctly (no inheritance)" do
       string_scalar = Verse::Schema::Scalar.new(values: [String])
       child_schema = Verse::Schema::Collection.new(values: [integer_scalar, string_scalar])
       parent_schema = Verse::Schema::Collection.new(values: [integer_scalar]) # Only allows Integer
@@ -66,7 +66,7 @@ RSpec.describe Verse::Schema::Collection do
       expect(child_schema <= parent_schema).to be(false)
     end
 
-     it "handles both empty collections" do
+    it "handles both empty collections" do
       child_schema = Verse::Schema::Collection.new(values: [])
       parent_schema = Verse::Schema::Collection.new(values: [])
 
@@ -93,11 +93,11 @@ RSpec.describe Verse::Schema::Collection do
     end
 
     it "returns error if input is not an array" do
-       schema = Verse::Schema::Collection.new(values: [integer_scalar])
-       result = schema.validate("not an array")
-       expect(result.success?).to be(false)
-       expect(result.errors).to have_key(nil)
-       expect(result.errors[nil]).to include("must be an array")
+      schema = Verse::Schema::Collection.new(values: [integer_scalar])
+      result = schema.validate("not an array")
+      expect(result.success?).to be(false)
+      expect(result.errors).to have_key(nil)
+      expect(result.errors[nil]).to include("must be an array")
     end
   end
 end
