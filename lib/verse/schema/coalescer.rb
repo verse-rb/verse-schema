@@ -8,13 +8,9 @@ module Verse
       @mapping = {}
 
       DEFAULT_MAPPER = lambda do |type|
-        if type == Base
-          proc do |value, opts, locals:|
-            opts[:schema].validate(value, locals:)
-          end
-        elsif type.is_a?(Base)
-          proc do |value, _opts, locals:|
-            type.validate(value, locals:)
+        if type.is_a?(Base)
+          proc do |value, _opts, locals:, strict:|
+            type.validate(value, locals:,  strict:)
           end
         elsif type.is_a?(Class)
           proc do |value|
@@ -36,7 +32,7 @@ module Verse
           end
         end
 
-        def transform(value, type, opts = {}, locals: {})
+        def transform(value, type, opts = {}, locals: {}, strict: false)
           if type.is_a?(Array)
             # fast-path for when the type match already
             type.each do |t|
@@ -52,7 +48,7 @@ module Verse
             type.each do |t|
               converted = @mapping.fetch(t) do
                 DEFAULT_MAPPER.call(t)
-              end.call(value, opts, locals:)
+              end.call(value, opts, locals:, strict:)
 
               if !converted.is_a?(Result) ||
                  (converted.is_a?(Result) && converted.success?)
@@ -70,7 +66,7 @@ module Verse
           else
             @mapping.fetch(type) do
               DEFAULT_MAPPER.call(type)
-            end.call(value, opts, locals:)
+            end.call(value, opts, locals:, strict:)
           end
         end
       end

@@ -69,7 +69,7 @@ module Verse
 
       def valid?(input) = validate(input).success?
 
-      def validate(input, error_builder: nil, locals: {})
+      def validate(input, error_builder: nil, locals: {}, strict: false)
         error_builder = \
           case error_builder
           when String
@@ -87,7 +87,7 @@ module Verse
 
         locals = locals.dup # Ensure they are not modified
 
-        validate_hash(input, error_builder, locals)
+        validate_hash(input, error_builder, locals, strict)
       end
 
       def dup
@@ -276,7 +276,7 @@ module Verse
 
       protected
 
-      def validate_hash(input, error_builder, locals)
+      def validate_hash(input, error_builder, locals, strict)
         locals[:__path__] ||= []
 
         input = input.transform_keys(&:to_sym)
@@ -295,11 +295,22 @@ module Verse
           end
 
           if exists
-            field.apply(value, output, error_builder, locals)
+            field.apply(value, output, error_builder, locals, strict)
           elsif field.default?
-            field.apply(field.default, output, error_builder, locals)
+            field.apply(field.default, output, error_builder, locals, strict)
           elsif field.required?
             error_builder.add(field.key, "is required")
+          end
+        end
+
+        # If strict mode is enabled, check for extra fields
+        # that are not defined in the schema.
+        if !@extra_fields && strict
+          extra_keys = input.keys - @cache_field_name
+          if extra_keys.any?
+            extra_keys.each do |key|
+              error_builder.add(key, "is not allowed")
+            end
           end
         end
 

@@ -20,7 +20,7 @@ module Verse
         @values = values.transform_values{ |v| v.is_a?(Array) ? v : [v] }
       end
 
-      def validate(input, error_builder: nil, locals: {})
+      def validate(input, error_builder: nil, locals: {}, strict: false)
         locals = locals.dup # Ensure they are not modified
 
         error_builder = \
@@ -35,7 +35,7 @@ module Verse
 
         locals[:__path__] ||= []
 
-        validate_selector(input, error_builder, locals)
+        validate_selector(input, error_builder, locals, strict)
       end
 
       def dup
@@ -123,7 +123,7 @@ module Verse
 
       protected
 
-      def validate_selector(input, error_builder, locals)
+      def validate_selector(input, error_builder, locals, strict)
         output = {}
 
         selector = locals.fetch(:selector) do
@@ -154,7 +154,8 @@ module Verse
               input,
               fetched_values,
               nil,
-              locals:
+              locals:,
+              strict:
             )
 
           if coalesced_value.is_a?(Result)

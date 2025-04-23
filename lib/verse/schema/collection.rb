@@ -21,7 +21,7 @@ module Verse
         @values = values
       end
 
-      def validate(input, error_builder: nil, locals: {})
+      def validate(input, error_builder: nil, locals: {}, strict: false)
         locals = locals.dup # Ensure they are not modified
 
         error_builder = \
@@ -34,7 +34,7 @@ module Verse
             ErrorBuilder.new
           end
 
-        validate_array(input, error_builder, locals)
+        validate_array(input, error_builder, locals, strict)
       end
 
       def dup
@@ -130,7 +130,7 @@ module Verse
 
       protected
 
-      def validate_array(input, error_builder, locals)
+      def validate_array(input, error_builder, locals, strict)
         locals[:__path__] ||= []
 
         output = []
@@ -148,7 +148,8 @@ module Verse
               value,
               @values,
               @opts,
-              locals:
+              locals:,
+              strict:
             )
 
           if coalesced_value.is_a?(Result)

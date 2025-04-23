@@ -64,6 +64,8 @@ These examples are extracted directly from the gem's specs, ensuring they are ac
   
   - [Open Hash](#open-hash)
   
+  - [Strict Validation Mode](#strict-validation-mode)
+  
 
 - [2. Complex Structures](#2-complex-structures)
   
@@ -431,6 +433,54 @@ it "demonstrates schemas that allow extra fields" do
     age: 30,
     email: "john@example.com"
   })
+end
+
+```
+
+
+### Strict Validation Mode
+
+
+```ruby
+it "demonstrates strict validation for extra fields during validation" do
+  # By default, schemas ignore fields not defined in the schema unless `extra_fields` is used.
+  # You can enforce strict validation by passing `strict: true` to the `validate` method.
+  # This will cause validation to fail if extra fields are provided and the schema
+  # does not explicitly allow them via `extra_fields`.
+
+  # Please note: `strict` mode is propagated to the children schemas, when you have
+  # nested structures.
+
+  # Define a standard schema (extra_fields is false by default)
+  schema = Verse::Schema.define do
+    field(:name, String)
+  end
+
+  # Default validation (strict: false) ignores extra fields
+  result_default = schema.validate({ name: "John", age: 30 })
+  expect(result_default.success?).to be true
+  expect(result_default.value).to eq({ name: "John" }) # 'age' is ignored
+
+  # Strict validation (strict: true) fails with extra fields
+  result_strict_fail = schema.validate({ name: "John", age: 30 }, strict: true)
+  expect(result_strict_fail.success?).to be false
+  expect(result_strict_fail.errors).to eq({ age: ["is not allowed"] }) # Error on extra field 'age'
+
+  # Strict validation succeeds if no extra fields are provided
+  result_strict_ok = schema.validate({ name: "John" }, strict: true)
+  expect(result_strict_ok.success?).to be true
+  expect(result_strict_ok.value).to eq({ name: "John" })
+
+  # Now, define a schema that explicitly allows extra fields
+  schema_with_extra = Verse::Schema.define do
+    field(:name, String)
+    extra_fields # Explicitly allow extra fields
+  end
+
+  # Strict validation has no effect if `extra_fields` is enabled in the schema definition
+  result_strict_extra_ok = schema_with_extra.validate({ name: "John", age: 30 }, strict: true)
+  expect(result_strict_extra_ok.success?).to be true
+  expect(result_strict_extra_ok.value).to eq({ name: "John", age: 30 }) # Extra field 'age' is allowed and included
 end
 
 ```

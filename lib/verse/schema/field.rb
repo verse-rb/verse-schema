@@ -347,12 +347,12 @@ module Verse
       alias_method :<, :inherit?
 
       # :nodoc:
-      def apply(value, output, error_builder, locals)
+      def apply(value, output, error_builder, locals, strict)
         locals[:__path__].push(@name)
 
         if @type.is_a?(Base)
           error_builder.context(@name) do |error_builder|
-            result = @type.validate(value, error_builder:, locals:)
+            result = @type.validate(value, error_builder:, locals:, strict:)
 
             # Apply field-level post-processors to the result of the nested schema validation
             output[@name] = if @post_processors && error_builder.errors.empty?
@@ -365,7 +365,7 @@ module Verse
           end
         else
           coalesced_value =
-            Coalescer.transform(value, @type, @opts, locals:)
+            Coalescer.transform(value, @type, @opts, locals:, strict:)
 
           if coalesced_value.is_a?(Result)
             error_builder.combine(@name, coalesced_value.errors)

@@ -107,7 +107,7 @@ module Verse
       end
 
       register(nil, NilClass) do |value|
-        next nil if value.nil? || value == ""
+        next nil if value.nil? || value == "" || value == "null"
 
         raise Coalescer::Error, "must be nil"
       end

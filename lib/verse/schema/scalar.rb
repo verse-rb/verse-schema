@@ -21,7 +21,7 @@ module Verse
         @values = values
       end
 
-      def validate(input, error_builder: nil, locals: {})
+      def validate(input, error_builder: nil, locals: {}, strict: false)
         locals = locals.dup # Ensure they are not modified
 
         error_builder = \
@@ -34,7 +34,7 @@ module Verse
             ErrorBuilder.new
           end
 
-        validate_scalar(input, error_builder, locals)
+        validate_scalar(input, error_builder, locals, strict)
       end
 
       def dup
@@ -122,7 +122,7 @@ module Verse
 
       protected
 
-      def validate_scalar(input, error_builder, locals)
+      def validate_scalar(input, error_builder, locals, strict)
         coalesced_value = nil
 
         begin
@@ -131,7 +131,8 @@ module Verse
               input,
               @values,
               nil,
-              locals:
+              locals:,
+              strict:
             )
 
           if coalesced_value.is_a?(Result)

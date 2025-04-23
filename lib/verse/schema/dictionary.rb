@@ -17,7 +17,7 @@ module Verse
         @values    = values
       end
 
-      def validate(input, error_builder: nil, locals: {})
+      def validate(input, error_builder: nil, locals: {}, strict: false)
         locals = locals.dup # Ensure they are not modified
 
         error_builder = \
@@ -32,7 +32,7 @@ module Verse
 
         locals[:__path__] ||= []
 
-        validate_dictionary(input, error_builder, locals)
+        validate_dictionary(input, error_builder, locals, strict)
       end
 
       def dup
@@ -117,7 +117,7 @@ module Verse
 
       protected
 
-      def validate_dictionary(input, error_builder, locals)
+      def validate_dictionary(input, error_builder, locals, strict)
         output = {}
 
         unless input.is_a?(Hash)
@@ -134,7 +134,8 @@ module Verse
               value,
               @values,
               @opts,
-              locals:
+              locals:,
+              strict:
             )
 
           if coalesced_value.is_a?(Result)

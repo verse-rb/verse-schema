@@ -61,7 +61,7 @@ module Verse
 
       def valid?(input) = validate(input).success?
 
-      def validate(input, error_builder: nil, locals: {}) = raise NotImplementedError
+      def validate(input, error_builder: nil, locals: {}, strict: false) = raise NotImplementedError
 
       def new(arg)
         result = validate(arg)
