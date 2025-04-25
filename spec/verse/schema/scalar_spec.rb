@@ -169,6 +169,25 @@ RSpec.describe Verse::Schema::Scalar do
       it { expect(scalar_int <= scalar_int_dup).to be true }
       it { expect(scalar_num <= scalar_int).to be false }
       it { expect(scalar_str <= scalar_int).to be false }
+
+      # Test compatibility with non-Scalar types
+      it "returns true when comparing Scalar<T> with T" do
+        expect(scalar_int <= Integer).to be true
+      end
+
+      it "returns true when comparing Scalar<T> with superclass of T" do
+        expect(scalar_int <= Numeric).to be true
+      end
+
+      it "returns false when comparing Scalar<T> with unrelated type" do
+        expect(scalar_int <= String).to be false
+      end
+
+      it "returns false when comparing Scalar<T> with subclass of T" do
+        # This is expected behavior - a Scalar<Numeric> is not compatible with Integer
+        # because Numeric could contain Float values that aren't Integers
+        expect(scalar_num <= Integer).to be false
+      end
     end
 
     describe "#<" do

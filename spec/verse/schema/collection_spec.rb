@@ -72,6 +72,27 @@ RSpec.describe Verse::Schema::Collection do
 
       expect(child_schema <= parent_schema).to be(true)
     end
+
+    # Test for the specific issue with collection<scalar<Integer>> and collection<Integer>
+    it "handles collection<scalar<Integer>> <= collection<Integer>" do
+      # Create the schemas that match the error message
+      scalar_int = Verse::Schema::Scalar.new(values: [Integer])
+      collection_scalar_int = Verse::Schema::Collection.new(values: [scalar_int])
+      collection_int = Verse::Schema::Collection.new(values: [Integer])
+
+      # This should now pass with our fix
+      expect(collection_scalar_int <= collection_int).to be(true)
+    end
+
+    it "handles collection<Integer> <= collection<scalar<Integer>>" do
+      # Test the reverse direction as well
+      scalar_int = Verse::Schema::Scalar.new(values: [Integer])
+      collection_scalar_int = Verse::Schema::Collection.new(values: [scalar_int])
+      collection_int = Verse::Schema::Collection.new(values: [Integer])
+
+      # This should also pass with our fix
+      expect(collection_int <= collection_scalar_int).to be(true)
+    end
   end
 
   # Basic validation tests (can be expanded)

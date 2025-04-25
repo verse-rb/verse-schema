@@ -64,19 +64,45 @@ module Verse
         end
       end
 
-      def <=(other)
-        other == self || inherit?(other)
-      end
+  def <=(other)
+    # 1. Identical check: Is it the exact same object?
+    return true if other == self
 
-      def <(other)
-        other != self && inherit?(other)
-      end
+    # 2. Check if inheriting from another Scalar:
+    #    Use the existing inherit? method which correctly handles Scalar-to-Scalar inheritance.
+    #    (inherit? implicitly checks `other.is_a?(Scalar)`)
+    return true if inherit?(other)
 
-      # rubocop:disable Style/InverseMethods
-      def >(other)
-        !self.<=(other)
+    # 3. NEW: Check compatibility with non-Scalar types:
+    #    If 'other' is not a Scalar, check if any type *wrapped* by this Scalar
+    #    is a subtype of 'other'. This handles `Scalar<Integer> <= Integer`.
+    #    We rely on the `<=` operator of the wrapped types themselves.
+    @values.any? do |wrapped_type|
+      begin
+        # Use standard Ruby `<=` for comparison.
+        # This works for Class <= Class (e.g., Integer <= Integer, Integer <= Numeric)
+        # and potentially for SchemaType <= SchemaType if defined.
+        wrapped_type <= other
+      rescue TypeError
+        # Handle cases where <= is not defined between wrapped_type and other
+        false
       end
-      # rubocop:enable Style/InverseMethods
+    end
+  end
+
+  def <(other)
+    other != self && self <= other
+  end
+
+  # rubocop:disable Style/InverseMethods
+  def >(other)
+    !(self <= other)
+  end
+
+  def >=(other)
+    other <= self
+  end
+  # rubocop:enable Style/InverseMethods
 
       # Aggregation of two schemas.
       def +(other)

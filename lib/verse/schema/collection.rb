@@ -57,10 +57,30 @@ module Verse
         @values.all? do |child_type|
           # ...is a subtype (`<=`) of *at least one* type allowed by the parent collection.
           parent_schema.values.any? do |parent_type|
-            # Use the existing `<=` operator defined on schema types (Scalar, Struct, etc.)
-            # This assumes the `<=` operator correctly handles class inheritance (e.g., Integer <= Object)
-            # and schema type compatibility.
-            child_type <= parent_type
+            # Special handling for when child_type is a primitive class (like Integer)
+            # and parent_type is a Scalar
+            if !child_type.is_a?(Base) && parent_type.is_a?(Scalar)
+              # Check if the primitive class is compatible with any of the Scalar's values
+              parent_type.values.any? do |scalar_value|
+                begin
+                  # Use standard Ruby `<=` for comparison
+                  child_type <= scalar_value
+                rescue TypeError
+                  # Handle cases where <= is not defined between types
+                  false
+                end
+              end
+            else
+              # Use the existing `<=` operator defined on schema types (Scalar, Struct, etc.)
+              # This assumes the `<=` operator correctly handles class inheritance (e.g., Integer <= Object)
+              # and schema type compatibility.
+              begin
+                child_type <= parent_type
+              rescue TypeError
+                # Handle cases where <= is not defined between types
+                false
+              end
+            end
           end
         end
       end
