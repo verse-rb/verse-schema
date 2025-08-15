@@ -216,6 +216,8 @@ module Verse
             this.dataclass.from_raw(**value)
           end
         end
+
+        @dataclass_schema.freeze
       end
 
       # Create a value object class from the schema.
@@ -230,7 +232,7 @@ module Verse
 
         # Special case for empty schema (yeah, I know, it happens in my production code...)
         if fields.empty?
-          return Class.new do
+          return @dataclass = Class.new do
             def self.from_raw(*)=new
             def self.schema = dataclass_schema
 
@@ -238,7 +240,7 @@ module Verse
           end
         end
 
-        ::Struct.new(*fields, keyword_init: true) do
+        @dataclass = ::Struct.new(*fields, keyword_init: true) do
           # Redefine new method
           define_singleton_method(:from_raw, &method(:new))
 
@@ -273,8 +275,6 @@ module Verse
         @cache_field_name = @fields.map(&:key)
         @compiled_calls = []
 
-        dataclass_schema # compile the dataclass schema
-
         @fields.each do |field|
           key_sym = field.key
 
@@ -298,17 +298,20 @@ module Verse
             end
           elsif field.required?
             @compiled_calls << proc do |compiled_context|
-              value = compiled_context.input.fetch(key_sym) {
-                error_builder.add(key_sym, "is required"); next
-              }
+              catch :next do
+                value = compiled_context.input.fetch(key_sym) do
+                  compiled_context.error_builder.add(key_sym, "is required")
+                  throw :next
+                end
 
-              field.apply(
-                value,
-                compiled_context.output,
-                compiled_context.error_builder,
-                compiled_context.locals,
-                compiled_context.strict
-              )
+                field.apply(
+                  value,
+                  compiled_context.output,
+                  compiled_context.error_builder,
+                  compiled_context.locals,
+                  compiled_context.strict
+                )
+              end
             end
           else
             @compiled_calls << proc do |compiled_context|
@@ -342,7 +345,7 @@ module Verse
           end
         end
 
-        if @post_processor
+        if @post_processors
           @compiled_calls << proc do |compiled_context|
             next unless compiled_context.error_builder.errors.empty?
             compiled_context.output = @post_processors.call(

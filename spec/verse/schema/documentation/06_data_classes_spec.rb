@@ -45,8 +45,6 @@ RSpec.describe "Data classes", :readme do
         }
       })
 
-      require "pry"
-      binding.pry
       # The nested address is also a data class
       expect(person.address).to be_a(Address)
       expect(person.address.street).to eq("123 Main St")
