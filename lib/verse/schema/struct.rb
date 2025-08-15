@@ -284,50 +284,50 @@ module Verse
             end
           end
 
-          if field.default?
-            @compiled_calls << proc do |compiled_context|
-              value = compiled_context.input.fetch(key_sym){ field.default }
+          @compiled_calls << if field.default?
+                               proc do |compiled_context|
+                                 value = compiled_context.input.fetch(key_sym){ field.default }
 
-              field.apply(
-                value,
-                compiled_context.output,
-                compiled_context.error_builder,
-                compiled_context.locals,
-                compiled_context.strict
-              )
-            end
-          elsif field.required?
-            @compiled_calls << proc do |compiled_context|
-              value = compiled_context.input.fetch(key_sym, Nothing)
+                                 field.apply(
+                                   value,
+                                   compiled_context.output,
+                                   compiled_context.error_builder,
+                                   compiled_context.locals,
+                                   compiled_context.strict
+                                 )
+                               end
+                             elsif field.required?
+                               proc do |compiled_context|
+                                 value = compiled_context.input.fetch(key_sym, Nothing)
 
-              if value == Nothing
-                compiled_context.error_builder.add(key_sym, "is required")
-                next
-              end
+                                 if value == Nothing
+                                   compiled_context.error_builder.add(key_sym, "is required")
+                                   next
+                                 end
 
-              field.apply(
-                value,
-                compiled_context.output,
-                compiled_context.error_builder,
-                compiled_context.locals,
-                compiled_context.strict
-              )
-            end
-          else
-            @compiled_calls << proc do |compiled_context|
-              value = compiled_context.input.fetch(key_sym, Nothing)
+                                 field.apply(
+                                   value,
+                                   compiled_context.output,
+                                   compiled_context.error_builder,
+                                   compiled_context.locals,
+                                   compiled_context.strict
+                                 )
+                               end
+                             else
+                               proc do |compiled_context|
+                                 value = compiled_context.input.fetch(key_sym, Nothing)
 
-              next if value == Nothing
+                                 next if value == Nothing
 
-              field.apply(
-                value,
-                compiled_context.output,
-                compiled_context.error_builder,
-                compiled_context.locals,
-                compiled_context.strict
-              )
-            end
-          end
+                                 field.apply(
+                                   value,
+                                   compiled_context.output,
+                                   compiled_context.error_builder,
+                                   compiled_context.locals,
+                                   compiled_context.strict
+                                 )
+                               end
+                             end
         end
 
         if !@extra_fields
@@ -347,6 +347,7 @@ module Verse
         if @post_processors
           @compiled_calls << proc do |compiled_context|
             next unless compiled_context.error_builder.errors.empty?
+
             compiled_context.output = @post_processors.call(
               compiled_context.output,
               nil,

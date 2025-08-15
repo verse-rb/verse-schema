@@ -44,7 +44,7 @@ end
 ArraySchemaCompiled = ArraySchema.dup.freeze
 ArrayDataclass = ArraySchema.dataclass
 
-array_input = {values: ["John", 30]}
+array_input = { values: ["John", 30] }
 
 Benchmark.ips do |x|
   x.report("Schema") { ArraySchema.validate(array_input) }
@@ -84,8 +84,8 @@ end
 SelectorSchema = Verse::Schema.define do
   field(:type, Symbol)
   field(:data, {
-      user: UserSchema,
-      admin: AdminSchema
+    user: UserSchema,
+    admin: AdminSchema
   }, over: :type)
 end
 
