@@ -9,6 +9,10 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Struct < Base
+      CompiledContext = ::Struct.new(
+        :input, :error_builder, :locals, :strict, :output
+      )
+
       attr_accessor :fields
 
       # Initialize a new schema.
@@ -85,9 +89,13 @@ module Verse
           return Result.new({}, error_builder.errors)
         end
 
-        locals = locals.dup # Ensure they are not modified
+        locals = { __path__: [] }.merge(locals) # Duplicate locals to prevent modification
 
-        validate_hash(input, error_builder, locals, strict)
+        if frozen?
+          validate_hash_compiled(input, error_builder, locals, strict)
+        else
+          validate_hash(input, error_builder, locals, strict)
+        end
       end
 
       def dup
@@ -221,40 +229,132 @@ module Verse
         fields << :extra_fields if extra_fields?
 
         # Special case for empty schema (yeah, I know, it happens in my production code...)
-        @dataclass = if fields.empty?
-                       Class.new do
-                         def self.from_raw(*)=new
-                         def self.schema = dataclass_schema
+        if fields.empty?
+          return Class.new do
+            def self.from_raw(*)=new
+            def self.schema = dataclass_schema
 
-                         class_eval(&block) if block
-                       end
-                     else
-                       ::Struct.new(*fields, keyword_init: true) do
-                         # Redefine new method
-                         define_singleton_method(:from_raw, &method(:new))
+            class_eval(&block) if block
+          end
+        end
 
-                         define_singleton_method(:new) do |*args, **kwargs|
-                           # Use the schema to generate the hash for our record
-                           if args.size > 1
-                             raise ArgumentError, "You cannot pass more than one argument"
-                           end
+        ::Struct.new(*fields, keyword_init: true) do
+          # Redefine new method
+          define_singleton_method(:from_raw, &method(:new))
 
-                           if args.size == 1
-                             if kwargs.any?
-                               raise ArgumentError, "You cannot pass both a hash and keyword arguments"
-                             end
+          define_singleton_method(:new) do |*args, **kwargs|
+            # Use the schema to generate the hash for our record
+            args_size = args.size
 
-                             kwargs = args.first
-                           end
+            if args_size > 1
+              raise ArgumentError, "You cannot pass more than one argument"
+            end
 
-                           dataclass_schema.new(kwargs)
-                         end
+            if args_size == 1
+              if kwargs.any?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
 
-                         define_singleton_method(:schema){ dataclass_schema }
+              kwargs = args.first
+            end
 
-                         class_eval(&block) if block
-                       end
-                     end
+            dataclass_schema.new(kwargs)
+          end
+
+          define_singleton_method(:schema){ dataclass_schema }
+
+          class_eval(&block) if block
+        end
+      end
+
+      def freeze
+        return self if frozen?
+
+        @cache_field_name = @fields.map(&:key)
+        @compiled_calls = []
+
+        dataclass_schema # compile the dataclass schema
+
+        @fields.each do |field|
+          key_sym = field.key
+
+          if (over = field.opts[:over])
+            @compiled_calls << proc do |compiled_context|
+              compiled_context.locals[:selector] = compiled_context.output[over]
+            end
+          end
+
+          if field.default?
+            @compiled_calls << proc do |compiled_context|
+              value = compiled_context.input.fetch(key_sym){ field.default }
+
+              field.apply(
+                value,
+                compiled_context.output,
+                compiled_context.error_builder,
+                compiled_context.locals,
+                compiled_context.strict
+              )
+            end
+          elsif field.required?
+            @compiled_calls << proc do |compiled_context|
+              value = compiled_context.input.fetch(key_sym) {
+                error_builder.add(key_sym, "is required"); next
+              }
+
+              field.apply(
+                value,
+                compiled_context.output,
+                compiled_context.error_builder,
+                compiled_context.locals,
+                compiled_context.strict
+              )
+            end
+          else
+            @compiled_calls << proc do |compiled_context|
+              exists = true
+              value = compiled_context.input.fetch(key_sym) { exists = false }
+
+              next unless exists
+
+              field.apply(
+                value,
+                compiled_context.output,
+                compiled_context.error_builder,
+                compiled_context.locals,
+                compiled_context.strict
+              )
+            end
+          end
+        end
+
+        if !@extra_fields
+          @compiled_calls << proc do |compiled_context|
+            next unless compiled_context.strict
+
+            extra_keys = compiled_context.input.keys - @cache_field_name
+
+            if extra_keys.any?
+              extra_keys.each do |key|
+                compiled_context.error_builder.add(key, "is not allowed")
+              end
+            end
+          end
+        end
+
+        if @post_processor
+          @compiled_calls << proc do |compiled_context|
+            next unless compiled_context.error_builder.errors.empty?
+            compiled_context.output = @post_processors.call(
+              compiled_context.output,
+              nil,
+              compiled_context.error_builder,
+              **compiled_context.locals
+            )
+          end
+        end
+
+        super
       end
 
       def inspect
@@ -276,9 +376,20 @@ module Verse
 
       protected
 
-      def validate_hash(input, error_builder, locals, strict)
-        locals[:__path__] ||= []
+      def validate_hash_compiled(input, error_builder, locals, strict)
+        output = @extra_fields ? input : {}
+        input = input.transform_keys(&:to_sym)
 
+        compiled_context = CompiledContext.new(input, error_builder, locals, strict, output)
+
+        @compiled_calls.each do |call|
+          call.call(compiled_context)
+        end
+
+        Result.new(compiled_context.output, compiled_context.error_builder.errors)
+      end
+
+      def validate_hash(input, error_builder, locals, strict)
         input = input.transform_keys(&:to_sym)
         output = @extra_fields ? input : {}
 
