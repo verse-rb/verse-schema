@@ -48,34 +48,39 @@ ShiftEntry = ShiftEntrySchema.dataclass do
   end
 end
 
-ShiftEntry.schema.freeze
-
 require "ruby-prof"
 
 GC.compact
 
 def run_profiler
-  RubyProf.start
+  input = {
+    "to" => "2024-10-16 12:00:00",
+    "from" => "2024-10-16 04:00:00",
+    "details" => "Worked on the project",
+    "billable" => true,
+    "productive" => true,
+    "project_id" => 1
+  }
+
+  puts "frozen? #{ShiftEntrySchema.frozen?}"
+
+  # RubyProf.start
 
   start_time = Time.now.to_f
-  500_000.times do
-    ShiftEntry.new({ "to" => "2024-10-16 12:00:00",
-                     "from" => "2024-10-16 04:00:00",
-                     "details" => "Worked on the project",
-                     "billable" => true,
-                     "productive" => true,
-                     "project_id" => 1 })
+  50_000.times do
+    # ShiftEntry.new(input)
+    ShiftEntrySchema.validate(input)
   end
   total_time = Time.now.to_f - start_time.to_f
 
   puts "TOTAL TIME: #{total_time}s"
 
   # Stop profiling
-  result = RubyProf.stop
+  # result = RubyProf.stop
 
   # Print a flat report to the console (or choose other report formats)
-  printer = RubyProf::GraphPrinter.new(result)
-  printer.print($stdout, min_percent: 10) # Adjust min_percent to filter results
+  # printer = RubyProf::GraphPrinter.new(result)
+  # printer.print($stdout, min_percent: 10) # Adjust min_percent to filter results
 end
 
 run_profiler

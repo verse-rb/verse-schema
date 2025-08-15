@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    verse-schema (1.1.1)
+    verse-schema (1.2.0)
       attr_chainable (~> 1.0)
 
 GEM
@@ -10,6 +10,7 @@ GEM
     ast (2.4.2)
     attr_chainable (1.0.0)
     base64 (0.3.0)
+    benchmark-ips (2.14.0)
     bootsnap (1.18.3)
       msgpack (~> 1.2)
     coderay (1.1.3)
@@ -73,6 +74,7 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  benchmark-ips (~> 2.0)
   bootsnap (~> 1.16)
   pry
   rake (~> 13.0)

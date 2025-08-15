@@ -16,11 +16,11 @@ module Verse
           proc do |value|
             next value if value.is_a?(type)
 
-            raise Error, "invalid cast to `#{type}` for `#{value}`"
+            throw :fail, Error.new("invalid cast to `#{type}` for `#{value}`")
           end
         else
           proc do |value|
-            raise Error, "invalid cast to `#{type}` for `#{value}`"
+            throw :fail, Error.new("invalid cast to `#{type}` for `#{value}`")
           end
         end
       end
@@ -46,9 +46,17 @@ module Verse
             found = false
 
             type.each do |t|
-              converted = @mapping.fetch(t) do
-                DEFAULT_MAPPER.call(t)
-              end.call(value, opts, locals:, strict:)
+              converted = \
+                catch(:fail) do
+                  @mapping.fetch(t) do
+                    DEFAULT_MAPPER.call(t)
+                  end.call(value, opts, locals:, strict:)
+                end
+
+              if converted.is_a?(StandardError)
+                last_error_message = converted.message
+                next
+              end
 
               if !converted.is_a?(Result) ||
                  (converted.is_a?(Result) && converted.success?)
@@ -64,9 +72,15 @@ module Verse
 
             raise Error, (last_error_message || "invalid cast")
           else
-            @mapping.fetch(type) do
-              DEFAULT_MAPPER.call(type)
-            end.call(value, opts, locals:, strict:)
+            converted = catch(:fail) do
+              @mapping.fetch(type) do
+                DEFAULT_MAPPER.call(type)
+              end.call(value, opts, locals:, strict:)
+            end
+
+            return converted unless converted.is_a?(StandardError)
+
+            raise Error, converted.message || "invalid cast to `#{type}` for `#{value}`"
           end
         end
       end

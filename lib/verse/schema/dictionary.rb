@@ -143,10 +143,11 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          output[key.to_sym] = coalesced_value
-          locals[:__path__].pop
+          output[key_sym] = coalesced_value
         rescue Coalescer::Error => e
           error_builder.add(key, e.message, **locals)
+        ensure
+          locals[:__path__].pop
         end
 
         if @post_processors && error_builder.errors.empty?

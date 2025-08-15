@@ -298,27 +298,26 @@ module Verse
             end
           elsif field.required?
             @compiled_calls << proc do |compiled_context|
-              catch :next do
-                value = compiled_context.input.fetch(key_sym) do
-                  compiled_context.error_builder.add(key_sym, "is required")
-                  throw :next
-                end
+              value = compiled_context.input.fetch(key_sym, Nothing)
 
-                field.apply(
-                  value,
-                  compiled_context.output,
-                  compiled_context.error_builder,
-                  compiled_context.locals,
-                  compiled_context.strict
-                )
+              if value == Nothing
+                compiled_context.error_builder.add(key_sym, "is required")
+                next
               end
+
+              field.apply(
+                value,
+                compiled_context.output,
+                compiled_context.error_builder,
+                compiled_context.locals,
+                compiled_context.strict
+              )
             end
           else
             @compiled_calls << proc do |compiled_context|
-              exists = true
-              value = compiled_context.input.fetch(key_sym) { exists = false }
+              value = compiled_context.input.fetch(key_sym, Nothing)
 
-              next unless exists
+              next if value == Nothing
 
               field.apply(
                 value,
@@ -380,8 +379,8 @@ module Verse
       protected
 
       def validate_hash_compiled(input, error_builder, locals, strict)
-        output = @extra_fields ? input : {}
         input = input.transform_keys(&:to_sym)
+        output = @extra_fields ? input : {}
 
         compiled_context = CompiledContext.new(input, error_builder, locals, strict, output)
 
@@ -401,14 +400,13 @@ module Verse
         @fields.each do |field|
           key_sym = field.key
 
-          exists = true
-          value = input.fetch(key_sym) { exists = false }
+          value = input.fetch(key_sym, Nothing)
 
           if (over = field.opts[:over])
             locals[:selector] = output[over]
           end
 
-          if exists
+          if value != Nothing
             field.apply(value, output, error_builder, locals, strict)
           elsif field.default?
             field.apply(field.default, output, error_builder, locals, strict)
