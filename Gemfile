@@ -18,6 +18,6 @@ gem "relaxed-rubocop"
 gem "rubocop", "~> 1.21"
 gem "simplecov"
 
-gem "ruby-prof"
+gem "ruby-prof", "~> 1.7.2"
 
 gem "rspec", "~> 3.0"
