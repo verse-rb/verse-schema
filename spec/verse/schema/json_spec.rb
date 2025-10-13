@@ -157,7 +157,7 @@ RSpec.describe Verse::Schema::Json do
       expect(json_schema).to eq({
         :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}",
         :"$defs" => {
-          "Schema#{recursive_schema.object_id}" => {
+          :"Schema#{recursive_schema.object_id}" => {
             type: "object",
             properties: {
               name: { type: "string" },
@@ -193,9 +193,49 @@ RSpec.describe Verse::Schema::Json do
 
       json_schema = described_class.from(schema)
 
-      expect(json_schema).to include(
-        :"$ref" => "#/$defs/Schema#{schema.object_id}"
-      )
+      data_field = schema.fields.find { |f| f.name == :data }
+
+      expect(json_schema).to eq({
+        :"$ref" => "#/$defs/Schema#{schema.object_id}",
+        :"$defs" => {
+          :"Schema#{schema.object_id}" => {
+            :type => "object",
+            :properties => {
+              :type => { :type => "string" }, # it's a symbol, but it's converted to string
+              :data => {
+                :oneOf => [
+                  {
+                    if: { properties: { "type" => { "const" => "facebook" } } },
+                    then: { :"$ref" => "#/$defs/Schema#{facebook_schema.object_id}" }
+                  },
+                  {
+                    if: { properties: { "type" => { "const" => "google" } } },
+                    then: { :"$ref" => "#/$defs/Schema#{google_schema.object_id}" }
+                  }
+                ]
+              }
+            },
+            :required => [:type, :data],
+            :additionalProperties => false
+          },
+          :"Schema#{facebook_schema.object_id}" => {
+            :type => "object",
+            :properties => {
+              :url => { :type => "string" }
+            },
+            :required => [:url],
+            :additionalProperties => false
+          },
+          :"Schema#{google_schema.object_id}" => {
+            :type => "object",
+            :properties => {
+              :search => { :type => "string" }
+            },
+            :required => [:search],
+            :additionalProperties => false
+          }
+        }
+      })
     end
   end
 end

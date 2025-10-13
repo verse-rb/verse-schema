@@ -18,11 +18,11 @@ module Verse
 
       private
 
-      def self._from_schema(schema, registry:, definitions:)
+      def self._from_schema(schema, registry:, definitions:, field: nil)
         return { :"$ref" => registry[schema.object_id] } if registry.key?(schema.object_id)
 
 
-        if schema.is_a?(Verse::Schema::Base)
+        if schema.is_a?(Verse::Schema::Struct)
           # Register the schema to handle recursion
           # and give it a name.
           # The name is based on the class name, or the object_id if the class is anonymous.
@@ -30,25 +30,25 @@ module Verse
           ref = "#/$defs/#{name}"
 
           registry[schema.object_id] = ref
-          definitions[name] = _build_schema(schema, registry: registry, definitions: definitions)
+          definitions[name] = _build_schema(schema, registry: registry, definitions: definitions, field: field)
 
           return { :"$ref" => ref }
         end
 
-        _build_schema(schema, registry: registry, definitions: definitions)
+        _build_schema(schema, registry: registry, definitions: definitions, field: field)
       end
 
-      def self._build_schema(schema, registry:, definitions:)
+      def self._build_schema(schema, registry:, definitions:, field: nil)
         case schema
         when Verse::Schema::Struct
-          properties = schema.fields.each_with_object({}) do |field, obj|
-            obj[field.name] = begin
-              output = _from_schema(field.type, registry: registry, definitions: definitions)
-              desc = field.opts.dig(:meta, :description)
+          properties = schema.fields.each_with_object({}) do |field_obj, obj|
+            obj[field_obj.name] = begin
+              output = _from_schema(field_obj.type, registry: registry, definitions: definitions, field: field_obj)
+              desc = field_obj.opts.dig(:meta, :description)
 
               output[:description] = desc if desc
 
-              default = field.opts[:default]
+              default = field_obj.opts[:default]
 
               if default && !default.is_a?(Proc)
                 output[:default] = default
@@ -94,11 +94,15 @@ module Verse
             anyOf: schema.values.map { |v| _from_schema(v, registry: registry, definitions: definitions) }
           }
         when Verse::Schema::Selector
+          discriminator = field&.opts&.[](:over)
+
+          raise "Selector schema must be used with `over` option on a field" unless discriminator
+
           {
             :"oneOf" => schema.values.map do |key, sub_schema|
               {
                 if: {
-                  properties: { schema.discriminator.to_s => { "const" => key.to_s } }
+                  properties: { discriminator.to_s => { "const" => key.to_s } }
                 },
                 then: _from_schema(sub_schema, registry: registry, definitions: definitions)
               }
@@ -116,6 +120,15 @@ module Verse
           { type: "string", format: "date-time" }
         when NilClass.singleton_class, nil
           { type: "null" }
+        when Array
+          case schema.length
+          when 0
+            { type: "null" }
+          when 1
+            _from_schema(schema.first, registry: registry, definitions: definitions)
+          else
+            { anyOf: schema.map { |v| _from_schema(v, registry: registry, definitions: definitions) } }
+          end
         else
           raise "Unknown type #{schema.inspect}"
         end
