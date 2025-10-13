@@ -14,27 +14,22 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(schema)
 
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{schema.object_id}",
-        :"$defs" => {
-          :"Schema#{schema.object_id}" => {
-            type: "object",
-            properties: {
-              name: {
-                type: "string",
-                description: "The name of the user"
-              },
-              age: {
-                type: "integer"
-              },
-              enabled: {
-                type: "boolean",
-                default: true
-              }
-            },
-            required: [:name, :age],
-            additionalProperties: false
+        type: "object",
+        properties: {
+          name: {
+            type: "string",
+            description: "The name of the user"
+          },
+          age: {
+            type: "integer"
+          },
+          enabled: {
+            type: "boolean",
+            default: true
           }
-        }
+        },
+        required: [:name, :age],
+        additionalProperties: false
       })
     end
 
@@ -50,18 +45,15 @@ RSpec.describe Verse::Schema::Json do
       user_schema = schema.fields.first.type
 
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{schema.object_id}",
+        type: "object",
+        properties: {
+          user: {
+            :"$ref" => "#/$defs/Schema#{user_schema.object_id}"
+          }
+        },
+        required: [:user],
+        additionalProperties: false,
         :"$defs" => {
-          :"Schema#{schema.object_id}" => {
-            type: "object",
-            properties: {
-              user: {
-                :"$ref" => "#/$defs/Schema#{user_schema.object_id}"
-              }
-            },
-            required: [:user],
-            additionalProperties: false
-          },
           :"Schema#{user_schema.object_id}" => {
             type: "object",
             properties: {
@@ -89,25 +81,22 @@ RSpec.describe Verse::Schema::Json do
       posts_schema = schema.fields.find{|f| f.name == :posts}.type.values.first
 
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{schema.object_id}",
-        :"$defs" => {
-          :"Schema#{schema.object_id}" => {
-            type: "object",
-            properties: {
-              tags: {
-                type: "array",
-                items: {
-                  type: "string"
-                }
-              },
-              posts: {
-                type: "array",
-                items: { :"$ref" => "#/$defs/Schema#{posts_schema.object_id}" }
-              }
-            },
-            required: [:tags, :posts],
-            additionalProperties: false
+        type: "object",
+        properties: {
+          tags: {
+            type: "array",
+            items: {
+              type: "string"
+            }
           },
+          posts: {
+            type: "array",
+            items: { :"$ref" => "#/$defs/Schema#{posts_schema.object_id}" }
+          }
+        },
+        required: [:tags, :posts],
+        additionalProperties: false,
+        :"$defs" => {
           :"Schema#{posts_schema.object_id}" => {
             type: "object",
             properties: {
@@ -129,20 +118,15 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(schema)
 
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{schema.object_id}",
-        :"$defs" => {
-          :"Schema#{schema.object_id}"=>{
+        type: "object",
+        properties: {
+          meta: {
             type: "object",
-            properties: {
-              meta: {
-                type: "object",
-                additionalProperties: { type: "string" }
-              }
-            },
-            required: [:meta],
-            additionalProperties: false
+            additionalProperties: { type: "string" }
           }
-        }
+        },
+        required: [:meta],
+        additionalProperties: false
       })
     end
 
@@ -155,7 +139,17 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(recursive_schema)
 
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}",
+        type: "object",
+        properties: {
+          name: { type: "string" },
+          children: {
+            type: "array",
+            items: { :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}" },
+            default: []
+          }
+        },
+        required: [:name],
+        additionalProperties: false,
         :"$defs" => {
           :"Schema#{recursive_schema.object_id}" => {
             type: "object",
@@ -193,46 +187,48 @@ RSpec.describe Verse::Schema::Json do
 
       json_schema = described_class.from(schema)
 
-      data_field = schema.fields.find { |f| f.name == :data }
-
       expect(json_schema).to eq({
-        :"$ref" => "#/$defs/Schema#{schema.object_id}",
-        :"$defs" => {
-          :"Schema#{schema.object_id}" => {
-            :type => "object",
-            :properties => {
-              :type => { :type => "string" }, # it's a symbol, but it's converted to string
-              :data => {
-                :oneOf => [
-                  {
-                    if: { properties: { "type" => { "const" => "facebook" } } },
-                    then: { :"$ref" => "#/$defs/Schema#{facebook_schema.object_id}" }
-                  },
-                  {
-                    if: { properties: { "type" => { "const" => "google" } } },
-                    then: { :"$ref" => "#/$defs/Schema#{google_schema.object_id}" }
-                  }
-                ]
+        type: "object",
+        properties: {
+          type: { type: "string", enum: %w[facebook google] },
+          data: { type: "object" }
+        },
+        required: [:type, :data],
+        additionalProperties: false,
+        allOf: [
+          {
+            if: { properties: { type: { const: "facebook" } } },
+            then: {
+              properties: {
+                data: { :"$ref" => "#/$defs/Schema#{facebook_schema.object_id}" }
               }
-            },
-            :required => [:type, :data],
-            :additionalProperties => false
+            }
           },
+          {
+            if: { properties: { type: { const: "google" } } },
+            then: {
+              properties: {
+                data: { :"$ref" => "#/$defs/Schema#{google_schema.object_id}" }
+              }
+            }
+          }
+        ],
+        :"$defs" => {
           :"Schema#{facebook_schema.object_id}" => {
-            :type => "object",
-            :properties => {
-              :url => { :type => "string" }
+            type: "object",
+            properties: {
+              url: { type: "string" }
             },
-            :required => [:url],
-            :additionalProperties => false
+            required: [:url],
+            additionalProperties: false
           },
           :"Schema#{google_schema.object_id}" => {
-            :type => "object",
-            :properties => {
-              :search => { :type => "string" }
+            type: "object",
+            properties: {
+              search: { type: "string" }
             },
-            :required => [:search],
-            :additionalProperties => false
+            required: [:search],
+            additionalProperties: false
           }
         }
       })

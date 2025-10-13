@@ -7,7 +7,8 @@ module Verse
       # @return [Hash] The JSON schema
       def self.from(schema)
         definitions = {}
-        output = _from_schema(schema, registry: {}, definitions: definitions)
+        # directly build the root schema, don't use a ref.
+        output = _build_schema(schema, registry: {}, definitions: definitions, root: true)
 
         if definitions.any?
           output[:"$defs"] = definitions
@@ -18,7 +19,7 @@ module Verse
 
       private
 
-      def self._from_schema(schema, registry:, definitions:, field: nil)
+      def self._from_schema(schema, registry:, definitions:, field: nil, root: false)
         return { :"$ref" => registry[schema.object_id] } if registry.key?(schema.object_id)
 
 
@@ -30,20 +31,28 @@ module Verse
           ref = "#/$defs/#{name}"
 
           registry[schema.object_id] = ref
-          definitions[name] = _build_schema(schema, registry: registry, definitions: definitions, field: field)
 
-          return { :"$ref" => ref }
+          # if it's the root schema, don't create a definition, just build it.
+          built_schema = _build_schema(schema, registry:, definitions:, field:, root:)
+
+          definitions[name] = built_schema unless root
+
+          return root ? built_schema : { :"$ref" => ref }
         end
 
-        _build_schema(schema, registry: registry, definitions: definitions, field: field)
+        _build_schema(schema, registry:, definitions:, field:, root:)
       end
 
-      def self._build_schema(schema, registry:, definitions:, field: nil)
+      # rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity
+      def self._build_schema(schema, registry:, definitions:, field: nil, root: false)
         case schema
         when Verse::Schema::Struct
           properties = schema.fields.each_with_object({}) do |field_obj, obj|
+            next if field_obj.type.is_a?(Verse::Schema::Selector)
+
             obj[field_obj.name] = begin
-              output = _from_schema(field_obj.type, registry: registry, definitions: definitions, field: field_obj)
+              # root is always false for nested fields.
+              output = _from_schema(field_obj.type, registry:, definitions:, field: field_obj)
               desc = field_obj.opts.dig(:meta, :description)
 
               output[:description] = desc if desc
@@ -67,12 +76,39 @@ module Verse
           json[:required] = required_fields if required_fields.any?
           json[:additionalProperties] = schema.extra_fields?
 
+          # Handle selectors
+          schema.fields.each do |field_obj|
+            next unless field_obj.type.is_a?(Verse::Schema::Selector)
+
+            discriminator = field_obj.opts[:over]
+            json[:properties][field_obj.name] = { type: "object" }
+
+            selector_keys = field_obj.type.values.keys
+            if !selector_keys.include?(:__else__)
+              json[:properties][discriminator][:enum] = selector_keys.map(&:to_s)
+            end
+
+            json[:allOf] = field_obj.type.values.map do |key, sub_schema|
+              next if key == :__else__
+              {
+                if: {
+                  properties: { discriminator.to_sym => { const: key.to_s } }
+                },
+                then: {
+                  properties: {
+                    field_obj.name => _from_schema(sub_schema, registry:, definitions:, field: field_obj)
+                  }
+                }
+              }
+            end.compact
+          end
+
           json
         when Verse::Schema::Collection
           items = if schema.values.length > 1
-                    { anyOf: schema.values.map { |v| _from_schema(v, registry: registry, definitions: definitions) } }
+                    { anyOf: schema.values.map { |v| _from_schema(v, registry:, definitions:) } }
                   else
-                    _from_schema(schema.values.first, registry: registry, definitions: definitions)
+                    _from_schema(schema.values.first, registry:, definitions:)
                   end
 
           {
@@ -81,9 +117,9 @@ module Verse
           }
         when Verse::Schema::Dictionary
           additional_properties = if schema.values.length > 1
-                                    { anyOf: schema.values.map { |v| _from_schema(v, registry: registry, definitions: definitions) } }
+                                    { anyOf: schema.values.map { |v| _from_schema(v, registry:, definitions:) } }
                                   else
-                                    _from_schema(schema.values.first, registry: registry, definitions: definitions)
+                                    _from_schema(schema.values.first, registry:, definitions:)
                                   end
           {
             type: "object",
@@ -91,23 +127,11 @@ module Verse
           }
         when Verse::Schema::Scalar
           {
-            anyOf: schema.values.map { |v| _from_schema(v, registry: registry, definitions: definitions) }
+            anyOf: schema.values.map { |v| _from_schema(v, registry:, definitions:) }
           }
         when Verse::Schema::Selector
-          discriminator = field&.opts&.[](:over)
-
-          raise "Selector schema must be used with `over` option on a field" unless discriminator
-
-          {
-            :"oneOf" => schema.values.map do |key, sub_schema|
-              {
-                if: {
-                  properties: { discriminator.to_s => { "const" => key.to_s } }
-                },
-                then: _from_schema(sub_schema, registry: registry, definitions: definitions)
-              }
-            end
-          }
+          # This should not be reached directly for a valid schema with `over`
+          raise "Selector schema must be used within a Struct with `over` option."
         when String.singleton_class, Symbol.singleton_class
           { type: "string" }
         when Integer.singleton_class
@@ -125,14 +149,15 @@ module Verse
           when 0
             { type: "null" }
           when 1
-            _from_schema(schema.first, registry: registry, definitions: definitions)
+            _from_schema(schema.first, registry:, definitions:)
           else
-            { anyOf: schema.map { |v| _from_schema(v, registry: registry, definitions: definitions) } }
+            { anyOf: schema.map { |v| _from_schema(v, registry:, definitions:) } }
           end
         else
           raise "Unknown type #{schema.inspect}"
         end
       end
+      # rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity
     end
   end
 end
