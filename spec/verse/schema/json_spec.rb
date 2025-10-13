@@ -48,13 +48,13 @@ RSpec.describe Verse::Schema::Json do
         type: "object",
         properties: {
           user: {
-            :"$ref" => "#/$defs/Schema#{user_schema.object_id}"
+            "$ref": "#/$defs/Schema#{user_schema.object_id}"
           }
         },
         required: [:user],
         additionalProperties: false,
-        :"$defs" => {
-          :"Schema#{user_schema.object_id}" => {
+        "$defs": {
+          "Schema#{user_schema.object_id}": {
             type: "object",
             properties: {
               name: { type: "string" },
@@ -78,7 +78,7 @@ RSpec.describe Verse::Schema::Json do
 
       json_schema = described_class.from(schema)
 
-      posts_schema = schema.fields.find{|f| f.name == :posts}.type.values.first
+      posts_schema = schema.fields.find{ |f| f.name == :posts }.type.values.first
 
       expect(json_schema).to eq({
         type: "object",
@@ -91,13 +91,13 @@ RSpec.describe Verse::Schema::Json do
           },
           posts: {
             type: "array",
-            items: { :"$ref" => "#/$defs/Schema#{posts_schema.object_id}" }
+            items: { "$ref": "#/$defs/Schema#{posts_schema.object_id}" }
           }
         },
         required: [:tags, :posts],
         additionalProperties: false,
-        :"$defs" => {
-          :"Schema#{posts_schema.object_id}" => {
+        "$defs": {
+          "Schema#{posts_schema.object_id}": {
             type: "object",
             properties: {
               title: { type: "string" },
@@ -144,20 +144,20 @@ RSpec.describe Verse::Schema::Json do
           name: { type: "string" },
           children: {
             type: "array",
-            items: { :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}" },
+            items: { "$ref": "#/$defs/Schema#{recursive_schema.object_id}" },
             default: []
           }
         },
         required: [:name],
         additionalProperties: false,
-        :"$defs" => {
-          :"Schema#{recursive_schema.object_id}" => {
+        "$defs": {
+          "Schema#{recursive_schema.object_id}": {
             type: "object",
             properties: {
               name: { type: "string" },
               children: {
                 type: "array",
-                items: { :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}" },
+                items: { "$ref": "#/$defs/Schema#{recursive_schema.object_id}" },
                 default: []
               }
             },
@@ -200,7 +200,7 @@ RSpec.describe Verse::Schema::Json do
             if: { properties: { type: { const: "facebook" } } },
             then: {
               properties: {
-                data: { :"$ref" => "#/$defs/Schema#{facebook_schema.object_id}" }
+                data: { "$ref": "#/$defs/Schema#{facebook_schema.object_id}" }
               }
             }
           },
@@ -208,13 +208,13 @@ RSpec.describe Verse::Schema::Json do
             if: { properties: { type: { const: "google" } } },
             then: {
               properties: {
-                data: { :"$ref" => "#/$defs/Schema#{google_schema.object_id}" }
+                data: { "$ref": "#/$defs/Schema#{google_schema.object_id}" }
               }
             }
           }
         ],
-        :"$defs" => {
-          :"Schema#{facebook_schema.object_id}" => {
+        "$defs": {
+          "Schema#{facebook_schema.object_id}": {
             type: "object",
             properties: {
               url: { type: "string" }
@@ -222,7 +222,7 @@ RSpec.describe Verse::Schema::Json do
             required: [:url],
             additionalProperties: false
           },
-          :"Schema#{google_schema.object_id}" => {
+          "Schema#{google_schema.object_id}": {
             type: "object",
             properties: {
               search: { type: "string" }

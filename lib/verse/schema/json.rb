@@ -3,12 +3,13 @@
 module Verse
   module Schema
     module Json
+      # rubocop:disable Lint/HashCompareByIdentity
       # @param schema [Verse::Schema::Base] The schema to convert to JSON schema
       # @return [Hash] The JSON schema
       def self.from(schema)
         definitions = {}
         # directly build the root schema, don't use a ref.
-        output = _build_schema(schema, registry: {}, definitions: definitions, root: true)
+        output = _build_schema(schema, registry: {}, definitions: definitions)
 
         if definitions.any?
           output[:"$defs"] = definitions
@@ -17,11 +18,8 @@ module Verse
         output
       end
 
-      private
-
-      def self._from_schema(schema, registry:, definitions:, field: nil, root: false)
-        return { :"$ref" => registry[schema.object_id] } if registry.key?(schema.object_id)
-
+      def self._from_schema(schema, registry:, definitions:)
+        return { "$ref": registry[schema.object_id] } if registry.key?(schema.object_id)
 
         if schema.is_a?(Verse::Schema::Struct)
           # Register the schema to handle recursion
@@ -33,26 +31,24 @@ module Verse
           registry[schema.object_id] = ref
 
           # if it's the root schema, don't create a definition, just build it.
-          built_schema = _build_schema(schema, registry:, definitions:, field:, root:)
+          built_schema = _build_schema(schema, registry:, definitions:)
 
-          definitions[name] = built_schema unless root
+          definitions[name] = built_schema
 
-          return root ? built_schema : { :"$ref" => ref }
+          return { "$ref": ref }
         end
 
-        _build_schema(schema, registry:, definitions:, field:, root:)
+        _build_schema(schema, registry:, definitions:)
       end
 
-      # rubocop:disable Metrics/MethodLength, Metrics/CyclomaticComplexity
-      def self._build_schema(schema, registry:, definitions:, field: nil, root: false)
+      def self._build_schema(schema, registry:, definitions:)
         case schema
         when Verse::Schema::Struct
           properties = schema.fields.each_with_object({}) do |field_obj, obj|
             next if field_obj.type.is_a?(Verse::Schema::Selector)
 
             obj[field_obj.name] = begin
-              # root is always false for nested fields.
-              output = _from_schema(field_obj.type, registry:, definitions:, field: field_obj)
+              output = _from_schema(field_obj.type, registry:, definitions:)
               desc = field_obj.opts.dig(:meta, :description)
 
               output[:description] = desc if desc
@@ -90,13 +86,14 @@ module Verse
 
             json[:allOf] = field_obj.type.values.map do |key, sub_schema|
               next if key == :__else__
+
               {
                 if: {
                   properties: { discriminator.to_sym => { const: key.to_s } }
                 },
                 then: {
                   properties: {
-                    field_obj.name => _from_schema(sub_schema, registry:, definitions:, field: field_obj)
+                    field_obj.name => _from_schema(sub_schema, registry:, definitions:)
                   }
                 }
               }
@@ -157,7 +154,7 @@ module Verse
           raise "Unknown type #{schema.inspect}"
         end
       end
-      # rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity
+      # rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Lint/HashCompareByIdentity
     end
   end
 end
