@@ -62,13 +62,11 @@ module Verse
             if !child_type.is_a?(Base) && parent_type.is_a?(Scalar)
               # Check if the primitive class is compatible with any of the Scalar's values
               parent_type.values.any? do |scalar_value|
-                begin
-                  # Use standard Ruby `<=` for comparison
-                  child_type <= scalar_value
-                rescue TypeError
-                  # Handle cases where <= is not defined between types
-                  false
-                end
+                # Use standard Ruby `<=` for comparison
+                child_type <= scalar_value
+              rescue TypeError
+                # Handle cases where <= is not defined between types
+                false
               end
             else
               # Use the existing `<=` operator defined on schema types (Scalar, Struct, etc.)
