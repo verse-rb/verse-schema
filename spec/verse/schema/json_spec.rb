@@ -129,18 +129,18 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(schema)
 
       expect(json_schema).to eq({
-        "$ref" => "#/$defs/Schema#{schema.object_id}",
-        "$defs" => {
-          "Schema#{schema.object_id}"=>{
-            "type" => "object",
-            "properties" => {
-              "meta" => {
-                "type" => "object",
-                "additionalProperties" => { "type" => "string" }
+        :"$ref" => "#/$defs/Schema#{schema.object_id}",
+        :"$defs" => {
+          :"Schema#{schema.object_id}"=>{
+            type: "object",
+            properties: {
+              meta: {
+                type: "object",
+                additionalProperties: { type: "string" }
               }
             },
-            "required" => ["meta"],
-            "additionalProperties" => false
+            required: [:meta],
+            additionalProperties: false
           }
         }
       })
@@ -155,20 +155,20 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(recursive_schema)
 
       expect(json_schema).to eq({
-        "$ref" => "#/$defs/Schema#{recursive_schema.object_id}",
-        "$defs" => {
+        :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}",
+        :"$defs" => {
           "Schema#{recursive_schema.object_id}" => {
-            "type" => "object",
-            "properties" => {
-              "name" => { "type" => "string" },
-              "children" => {
-                "type" => "array",
-                "items" => { "$ref" => "#/$defs/Schema#{recursive_schema.object_id}" },
-                "default" => []
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              children: {
+                type: "array",
+                items: { :"$ref" => "#/$defs/Schema#{recursive_schema.object_id}" },
+                default: []
               }
             },
-            "required" => ["name"],
-            "additionalProperties" => false
+            required: [:name],
+            additionalProperties: false
           }
         }
       })
@@ -194,7 +194,7 @@ RSpec.describe Verse::Schema::Json do
       json_schema = described_class.from(schema)
 
       expect(json_schema).to include(
-        "$ref" => "#/$defs/Schema#{schema.object_id}"
+        :"$ref" => "#/$defs/Schema#{schema.object_id}"
       )
     end
   end
