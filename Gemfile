@@ -7,7 +7,7 @@ gemspec
 
 # Development dependencies
 group :development do
-  gem "prism", "~> 0.19.0", require: false
+  gem "prism", "~> 1.5.2", require: false
 end
 
 gem "rake", "~> 13.0"
