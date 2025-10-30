@@ -58,6 +58,9 @@ module Verse
       end
     end
 
+    # Alias as constant, useful in reflection cases.
+    Empty = empty
+
     def rule(message, &block)
       PostProcessor.new do |value, error|
         case block.arity
