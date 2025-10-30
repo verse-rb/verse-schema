@@ -1,3 +1,8 @@
+## 1.2.1
+
+- Add `Verse::Schema::Empty` constant as an alias to `Verse::Schema.empty`
+  for easier reflection and usage in code.
+
 ## 1.2
 
 - Add `Verse::Schema::Json.from` method to convert a Verse schema
