@@ -130,6 +130,28 @@ RSpec.describe Verse::Schema::Json do
       })
     end
 
+    it "convert a dictionary of array" do
+      schema = Verse::Schema.define do
+        field(:tags, Hash, of: Array)
+      end
+
+      json_schema = described_class.from(schema)
+
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          tags: {
+            type: "object",
+            additionalProperties: {
+              type: "array"
+            }
+          }
+        },
+        required: [:tags],
+        additionalProperties: false
+      })
+    end
+
     it "converts a recursive schema" do
       recursive_schema = Verse::Schema.define do
         field(:name, String)
