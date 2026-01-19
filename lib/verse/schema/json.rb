@@ -152,6 +152,8 @@ module Verse
           else
             { anyOf: schema.map { |v| _from_schema(v, registry:, definitions:) } }
           end
+        when Object
+          {} # no type restriction for generic objects
         else
           raise "Unknown type #{schema.inspect}"
         end

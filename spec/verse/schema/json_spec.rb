@@ -130,7 +130,7 @@ RSpec.describe Verse::Schema::Json do
       })
     end
 
-    it "convert a dictionary of array" do
+    it "converts a dictionary of array" do
       schema = Verse::Schema.define do
         field(:tags, Hash, of: Array)
       end
@@ -148,6 +148,22 @@ RSpec.describe Verse::Schema::Json do
           }
         },
         required: [:tags],
+        additionalProperties: false
+      })
+    end
+
+    it "converts an object" do
+      schema = Verse::Schema.define do
+        field(:config, Object)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          config: {}
+        },
+        required: [:config],
         additionalProperties: false
       })
     end
