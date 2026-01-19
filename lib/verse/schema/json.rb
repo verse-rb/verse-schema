@@ -141,6 +141,8 @@ module Verse
           { type: "string", format: "date-time" }
         when NilClass.singleton_class, nil
           { type: "null" }
+        when Array.singleton_class
+          { type: "array" }
         when Array
           case schema.length
           when 0
