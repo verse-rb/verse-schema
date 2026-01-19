@@ -152,10 +152,14 @@ module Verse
           else
             { anyOf: schema.map { |v| _from_schema(v, registry:, definitions:) } }
           end
-        when Object
+        when Object.singleton_class
           {} # no type restriction for generic objects
         else
-          raise "Unknown type #{schema.inspect}"
+          if schema.respond_to?(:to_json_schema)
+            schema.to_json_schema # custom schema conversion
+          else
+            raise "Unknown type #{schema.inspect}"
+          end
         end
       end
       # rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Lint/HashCompareByIdentity
