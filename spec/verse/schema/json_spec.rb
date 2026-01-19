@@ -272,6 +272,22 @@ RSpec.describe Verse::Schema::Json do
       })
     end
 
+    it "converts a set schema" do
+      schema = Verse::Schema.define do
+        field(:items, Set)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          items: { type: "array" }
+        },
+        required: [:items],
+        additionalProperties: false
+      })
+    end
+
     it "converts a custom schema" do
       class CustomSchemaType
         def to_json_schema
