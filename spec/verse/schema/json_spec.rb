@@ -130,7 +130,7 @@ RSpec.describe Verse::Schema::Json do
       })
     end
 
-    it "convert a dictionary of array" do
+    it "converts a dictionary of array" do
       schema = Verse::Schema.define do
         field(:tags, Hash, of: Array)
       end
@@ -254,6 +254,75 @@ RSpec.describe Verse::Schema::Json do
           }
         }
       })
+    end
+
+    it "converts an object schema" do
+      schema = Verse::Schema.define do
+        field(:config, Object)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          config: {}
+        },
+        required: [:config],
+        additionalProperties: false
+      })
+    end
+
+    it "converts a set schema" do
+      schema = Verse::Schema.define do
+        field(:items, Set)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          items: { type: "array" }
+        },
+        required: [:items],
+        additionalProperties: false
+      })
+    end
+
+    it "converts a custom schema" do
+      class CustomSchemaType
+        def to_json_schema
+          { type: "string", pattern: "^[a-z]+$" }
+        end
+      end
+
+      schema = Verse::Schema.define do
+        field(:data, CustomSchemaType.new)
+      end
+
+      json_schema = described_class.from(schema)
+
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          data: {
+            type: "string",
+            pattern: "^[a-z]+$"
+          }
+        },
+        required: [:data],
+        additionalProperties: false
+      })
+    end
+
+    it "raises an error for unknown types" do
+      class UnknownType; end
+      schema = Verse::Schema.define do
+        field(:data, UnknownType.new)
+      end
+
+      expect {
+        described_class.from(schema)
+      }.to raise_error("Unknown type #{schema.fields.first.type.inspect}")
     end
   end
 end

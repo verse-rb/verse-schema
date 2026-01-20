@@ -141,7 +141,7 @@ module Verse
           { type: "string", format: "date-time" }
         when NilClass.singleton_class, nil
           { type: "null" }
-        when Array.singleton_class
+        when Array.singleton_class, Set.singleton_class
           { type: "array" }
         when Array
           case schema.length
@@ -153,7 +153,13 @@ module Verse
             { anyOf: schema.map { |v| _from_schema(v, registry:, definitions:) } }
           end
         else
-          raise "Unknown type #{schema.inspect}"
+          if schema == Object
+            {} # any type
+          elsif schema.respond_to?(:to_json_schema)
+            schema.to_json_schema # custom schema conversion
+          else
+            raise "Unknown type #{schema.inspect}"
+          end
         end
       end
       # rubocop:enable Metrics/MethodLength, Metrics/CyclomaticComplexity, Lint/HashCompareByIdentity
