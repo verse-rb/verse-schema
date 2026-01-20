@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    verse-schema (1.2.1)
+    verse-schema (1.2.2)
       attr_chainable (~> 1.0)
 
 GEM
