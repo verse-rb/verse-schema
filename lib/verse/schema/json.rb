@@ -49,7 +49,7 @@ module Verse
 
             obj[field_obj.name] = begin
               output = _from_schema(field_obj.type, registry:, definitions:)
-              desc = field_obj.opts.dig(:meta, :description) || field_obj.opts[:desc]
+              desc = field_obj.opts.dig(:meta, :description) || field_obj.opts.dig(:meta, :desc)
 
               output[:description] = desc if desc
 
@@ -154,8 +154,12 @@ module Verse
           end
         when Hash.singleton_class
           { type: "object" }
-        when Tempfile.singleton_class
-          { type: "string", format: "binary" }
+        when IO.singleton_class, Tempfile.singleton_class
+          {
+            type: "object",
+            instanceof: "IO",
+            description: "A native IO stream or file pointer"
+          }
         else
           if schema == Object
             {} # any type
