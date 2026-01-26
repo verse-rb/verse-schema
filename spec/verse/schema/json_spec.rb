@@ -33,6 +33,30 @@ RSpec.describe Verse::Schema::Json do
       })
     end
 
+    it "converts a schema with meta description/desc" do
+      schema = Verse::Schema.define do
+        field(:title, String).meta(description: "The title of the item")
+        field(:count, Integer).meta(desc: "The count of items")
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          title: {
+            type: "string",
+            description: "The title of the item"
+          },
+          count: {
+            type: "integer",
+            description: "The count of items"
+          }
+        },
+        required: [:title, :count],
+        additionalProperties: false
+      })
+    end
+
     it "converts a schema with nested structs" do
       schema = Verse::Schema.define do
         field(:user) do
@@ -284,6 +308,48 @@ RSpec.describe Verse::Schema::Json do
           items: { type: "array" }
         },
         required: [:items],
+        additionalProperties: false
+      })
+    end
+
+    it "converts a hash schema" do
+      schema = Verse::Schema.define do
+        field(:settings, Hash)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          settings: { type: "object" }
+        },
+        required: [:settings],
+        additionalProperties: false
+      })
+    end
+
+    it "converts an IO/Tempfile schema" do
+      schema = Verse::Schema.define do
+        field(:file, IO)
+        field(:tempfile, Tempfile)
+      end
+
+      json_schema = described_class.from(schema)
+      expect(json_schema).to eq({
+        type: "object",
+        properties: {
+          file: {
+            type: "object",
+            instanceof: "IO",
+            description: "A native IO stream or file pointer"
+          },
+          tempfile: {
+            type: "object",
+            instanceof: "IO",
+            description: "A native IO stream or file pointer"
+          }
+        },
+        required: [:file, :tempfile],
         additionalProperties: false
       })
     end
