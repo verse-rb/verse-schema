@@ -49,7 +49,7 @@ module Verse
 
             obj[field_obj.name] = begin
               output = _from_schema(field_obj.type, registry:, definitions:)
-              desc = field_obj.opts[:desc]
+              desc = field_obj.opts.dig(:meta, :description) || field_obj.opts[:desc]
 
               output[:description] = desc if desc
 
