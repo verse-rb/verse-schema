@@ -203,22 +203,6 @@ module Verse
           end
         end
 
-        this = self
-        fields_map = fields.map(&:name)
-
-        @dataclass_schema.transform do |value|
-          next value unless value.is_a?(Hash)
-
-          if this.extra_fields?
-            standard_fields = value.slice(*fields_map)
-            extra_fields = value.except(*fields_map)
-
-            this.dataclass.from_raw(**standard_fields, extra_fields:)
-          else
-            this.dataclass.from_raw(**value)
-          end
-        end
-
         @dataclass_schema.freeze
       end
 
@@ -242,6 +226,9 @@ module Verse
           end
         end
 
+        this = self
+        fields_map = fields.map(&:name)
+
         @dataclass = ::Struct.new(*fields, keyword_init: true) do
           # Redefine new method
           define_singleton_method(:from_raw, &method(:new))
@@ -262,7 +249,19 @@ module Verse
               kwargs = args.first
             end
 
-            dataclass_schema.new(kwargs)
+            result = dataclass_schema.validate(kwargs)
+
+            if result.success?
+              if this.extra_fields?
+                standard_fields = result.value.slice(*fields_map)
+                extra_fields = result.value.except(*fields_map)
+                this.dataclass.from_raw(**standard_fields, extra_fields:)
+              else
+                this.dataclass.from_raw(**result.value)
+              end
+            else
+              raise InvalidSchemaError, result.errors
+            end
           end
 
           define_singleton_method(:schema){ dataclass_schema }
