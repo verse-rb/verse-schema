@@ -7,23 +7,49 @@ module Verse
 
       @mapping = {}
 
-      DEFAULT_MAPPER = lambda do |type|
-        if type.is_a?(Base)
-          proc do |value, _opts, locals:, strict:|
-            type.validate(value, locals:, strict:)
-          end
-        elsif type.is_a?(Class)
-          proc do |value|
-            next value if value.is_a?(type)
+      DEFAULT_MAPPER = begin
+        cache = ObjectSpace::WeakMap.new
+        lambda do |type|
 
-            raise Error, "invalid cast to `#{type}` for `#{value}`"
-          end
-        else
-          proc do |value|
-            raise Error, "invalid cast to `#{type}` for `#{value}`"
+          cache.fetch(type) do
+            mapper = if type.is_a?(Base)
+              proc do |value, _opts, locals:, strict:|
+                type.validate(value, locals:, strict:)
+              end
+            elsif type.is_a?(Class)
+              proc do |value|
+                next value if value.is_a?(type)
+                raise Error, "invalid cast to `#{type}` for `#{value}`"
+              end
+            else
+              proc do |value|
+                raise Error, "invalid cast to `#{type}` for `#{value}`"
+              end
+            end
+
+            cache[type] = mapper
+            mapper
           end
         end
       end
+
+      # DEFAULT_MAPPER = lambda do |type|
+      #   if type.is_a?(Base)
+      #     proc do |value, _opts, locals:, strict:|
+      #       type.validate(value, locals:, strict:)
+      #     end
+      #   elsif type.is_a?(Class)
+      #     proc do |value|
+      #       next value if value.is_a?(type)
+
+      #       raise Error, "invalid cast to `#{type}` for `#{value}`"
+      #     end
+      #   else
+      #     proc do |value|
+      #       raise Error, "invalid cast to `#{type}` for `#{value}`"
+      #     end
+      #   end
+      # end
 
       class << self
         def register(*mapping, &block)

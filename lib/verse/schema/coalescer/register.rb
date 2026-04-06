@@ -58,18 +58,32 @@ module Verse
         end
       end
 
+      # Pre-compiled regex patterns for fast Time parsing
+      ISO_DATETIME_REGEX = /\A(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?(?:Z|([+-]\d{2}):?(\d{2}))?\z/.freeze
+
       register(Time) do |value|
         case value
         when Time
           value
         when String
-          # Optimization: Try specific format first, fallback to general parse
-          begin
-            # Attempt fast parsing with the common format used in JSON
-            format = "%Y-%m-%d %H:%M:%S"
-            Time.strptime(value, format)
-          rescue ArgumentError # Raised by strptime on format mismatch
-            # Fallback to slower, more general parsing if strptime failed
+          # Fast path
+          if (m = ISO_DATETIME_REGEX.match(value))
+            year, month, day = m[1].to_i, m[2].to_i, m[3].to_i
+            hour, min, sec = m[4].to_i, m[5].to_i, m[6].to_i
+
+            if m[8] # timezone offset present
+              offset_hours = m[8].to_i
+              offset_mins = m[9].to_i
+              offset_sec = (offset_hours * 3600) + (offset_mins * 60)
+              offset_sec = -offset_sec if offset_hours < 0 || (offset_hours == 0 && m[8].start_with?("-"))
+              Time.new(year, month, day, hour, min, sec, offset_sec)
+            elsif m[7] # sub-second present
+              Time.new(year, month, day, hour, min, sec)
+            else
+              Time.new(year, month, day, hour, min, sec)
+            end
+          else
+            # Fallback
             Time.parse(value)
           end
         else
