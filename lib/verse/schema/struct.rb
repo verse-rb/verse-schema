@@ -291,50 +291,50 @@ module Verse
 
         out = StringIO.new
 
-        out.puts "def _validate_hash_compiled(compiled_context)"
+        out.puts "def _validate_hash_compiled(input, error_builder, locals, strict, output)"
 
         @fields.each do |field|
           key_sym = field.key
           key_sym_str = key_sym.inspect
 
           if (over = field.opts[:over])
-            out.puts "  compiled_context.locals[:selector] = compiled_context.output[#{compile_store.(over)}]"
+            out.puts "  locals[:selector] = output[#{compile_store.(over)}]"
           end
 
           stored_field = compile_store.(field)
           if field.default?
-            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}){ #{stored_field}.default }"
-            out.puts "  #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+            out.puts "  value = input.fetch(#{key_sym_str}){ #{stored_field}.default }"
+            out.puts "  #{stored_field}.apply(value, output, error_builder, locals, strict)"
           elsif field.required?
-            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  value = input.fetch(#{key_sym_str}, Nothing)"
             out.puts "  if value == Nothing"
-            out.puts "    compiled_context.error_builder.add(#{key_sym_str}, \"is required\")"
+            out.puts "    error_builder.add(#{key_sym_str}, \"is required\")"
             out.puts "  else"
-            out.puts "    #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+            out.puts "    #{stored_field}.apply(value, output, error_builder, locals, strict)"
             out.puts "  end"
 
           else
-            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  value = input.fetch(#{key_sym_str}, Nothing)"
             out.puts "  if value != Nothing"
-            out.puts "    #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+            out.puts "    #{stored_field}.apply(value, output, error_builder, locals, strict)"
             out.puts "  end"
           end
         end
 
         if !@extra_fields
-          out.puts "  if compiled_context.strict"
-          out.puts "    extra_keys = compiled_context.input.keys - @cache_field_name"
+          out.puts "  if strict"
+          out.puts "    extra_keys = input.keys - @cache_field_name"
           out.puts "    if extra_keys.any?"
           out.puts "      extra_keys.each do |key|"
-          out.puts "        compiled_context.error_builder.add(key, \"is not allowed\")"
+          out.puts "        error_builder.add(key, \"is not allowed\")"
           out.puts "      end"
           out.puts "    end"
           out.puts "  end"
         end
 
         if @post_processors
-          out.puts "  if compiled_context.error_builder.errors.empty?"
-          out.puts "    compiled_context.output = @post_processors.call(compiled_context.output, nil, compiled_context.error_builder, **compiled_context.locals)"
+          out.puts "  if error_builder.errors.empty?"
+          out.puts "    output = @post_processors.call(output, nil, error_builder, **locals)"
           out.puts "  end"
         end
 
@@ -370,7 +370,7 @@ module Verse
 
         compiled_context = CompiledContext.new(input, error_builder, locals, strict, output)
 
-        _validate_hash_compiled(compiled_context)
+        _validate_hash_compiled(input, error_builder, locals, strict, output)
 
         Result.new(compiled_context.output, compiled_context.error_builder.errors)
       end

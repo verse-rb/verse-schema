@@ -11,6 +11,9 @@ group :development do
 end
 
 gem "rake", "~> 13.0"
+gem "ostruct", "~> 0.6" # For rake
+
+gem "benchmark", "~> 0.5"
 
 gem "bootsnap", "~> 1.16"
 gem "pry"

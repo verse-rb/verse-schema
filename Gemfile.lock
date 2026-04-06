@@ -10,6 +10,7 @@ GEM
     ast (2.4.2)
     attr_chainable (1.0.0)
     base64 (0.3.0)
+    benchmark (0.5.0)
     benchmark-ips (2.14.0)
     bootsnap (1.18.3)
       msgpack (~> 1.2)
@@ -20,6 +21,7 @@ GEM
     language_server-protocol (3.17.0.3)
     method_source (1.0.0)
     msgpack (1.7.2)
+    ostruct (0.6.3)
     parallel (1.24.0)
     parser (3.3.0.5)
       ast (~> 2.4.1)
@@ -75,8 +77,10 @@ PLATFORMS
   x86_64-linux
 
 DEPENDENCIES
+  benchmark (~> 0.5)
   benchmark-ips (~> 2.0)
   bootsnap (~> 1.16)
+  ostruct (~> 0.6)
   prism (~> 1.5.2)
   pry
   rake (~> 13.0)
