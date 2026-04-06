@@ -9,6 +9,7 @@ module Verse
     require_relative "schema/base"
     require_relative "schema/coalescer"
     require_relative "schema/post_processor"
+    require_relative "schema/json"
 
     def define(from = nil, &block)
       if from
@@ -56,6 +57,9 @@ module Verse
         empty_schema
       end
     end
+
+    # Alias as constant, useful in reflection cases.
+    Empty = empty
 
     def rule(message, &block)
       PostProcessor.new do |value, error|

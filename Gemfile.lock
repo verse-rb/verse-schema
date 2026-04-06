@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    verse-schema (1.2.0)
+    verse-schema (1.2.4)
       attr_chainable (~> 1.0)
 
 GEM
@@ -24,6 +24,7 @@ GEM
     parser (3.3.0.5)
       ast (~> 2.4.1)
       racc
+    prism (1.5.2)
     pry (0.14.2)
       coderay (~> 1.1)
       method_source (~> 1.0)
@@ -76,6 +77,7 @@ PLATFORMS
 DEPENDENCIES
   benchmark-ips (~> 2.0)
   bootsnap (~> 1.16)
+  prism (~> 1.5.2)
   pry
   rake (~> 13.0)
   relaxed-rubocop

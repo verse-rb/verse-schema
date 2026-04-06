@@ -1,3 +1,13 @@
+## 1.2.1
+
+- Add `Verse::Schema::Empty` constant as an alias to `Verse::Schema.empty`
+  for easier reflection and usage in code.
+
+## 1.2
+
+- Add `Verse::Schema::Json.from` method to convert a Verse schema
+to JSON Schema format (note: doesn't work the other way around yet)
+
 ## 1.1
 
 - Add `strict` mode to `validate` which will raise an error if the input has

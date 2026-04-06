@@ -123,6 +123,11 @@ These examples are extracted directly from the gem's specs, ensuring they are ac
   - [Polymorphic Schema](#polymorphic-schema)
   
 
+- [JSON Schema Generation](#json-schema-generation)
+  
+  - [Generating JSON Schema](#generating-json-schema)
+  
+
 
 
 ## 1. Basic Usage
@@ -952,7 +957,7 @@ it "demonstrates reusable rules defined with Verse::Schema.rule" do
   is_positive = Verse::Schema.rule("must be positive") { |value| value > 0 }
 
   # Define another reusable rule
-  is_even = Verse::Schema.rule("must be even") { |value| value.even? }
+  is_even = Verse::Schema.rule("must be even", &:even?)
 
   # Create a schema that uses the reusable rules
   schema = Verse::Schema.define do
@@ -1666,7 +1671,6 @@ it "demonstrates a polymorphic schema" do
   # 3. Define a builder schema. The best way to do this is to use the
   # scalar type:
   builder_schema = Verse::Schema.scalar(Hash).transform do |input, error_builder|
-
     type = input[:type]
 
     if type.respond_to?(:to_sym)
@@ -1677,14 +1681,14 @@ it "demonstrates a polymorphic schema" do
     end
 
     schema = case type
-              when :facebook
-                facebook_schema
-              when :google
-                google_schema
-              else
-                error_builder.add(:type, "invalid type")
-                stop
-              end
+             when :facebook
+               facebook_schema
+             when :google
+               google_schema
+             else
+               error_builder.add(:type, "invalid type")
+               stop
+             end
 
     # Validate the input against the selected schema
     result = schema.validate(input, error_builder:)
@@ -1753,10 +1757,51 @@ it "demonstrates a polymorphic schema" do
   expect(invalid_result.success?).to be false
   # The errors are collected
   expect(invalid_result.errors).to eq({
-    :"events.0.url" => ["is required"],
-    :"events.1.location" => ["is required"],
-    :"events.2.type" => ["invalid type"]
+    "events.0.url": ["is required"],
+    "events.1.location": ["is required"],
+    "events.2.type": ["invalid type"]
   })
+end
+
+```
+
+
+
+## JSON Schema Generation
+
+
+### Generating JSON Schema
+
+
+```ruby
+it "converts a simple schema to a valid JSON schema" do
+  schema = Verse::Schema.define do
+    field(:name, String).meta(description: "The name of the user")
+    field(:age, Integer)
+  end
+
+  json_schema = Verse::Schema::Json.from(schema)
+  puts JSON.pretty_generate(json_schema)
+
+  # The output of the `to_json` method will be a valid JSON schema hash:
+  #
+  # {
+  #   "type": "object",
+  #   "properties": {
+  #     "name": {
+  #       "type": "string",
+  #       "description": "The name of the user"
+  #     },
+  #     "age": {
+  #       "type": "integer"
+  #     }
+  #   },
+  #   "required": [
+  #     "name",
+  #     "age"
+  #   ],
+  #   "additionalProperties": false
+  # }
 end
 
 ```
