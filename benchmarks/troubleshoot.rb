@@ -40,13 +40,13 @@ ShiftEntrySchema = Verse::Schema.define do
   end
 end
 
-# ShiftEntrySchema.freeze
-
 ShiftEntry = ShiftEntrySchema.dataclass do
   def duration
     to - from
   end
 end
+
+ShiftEntrySchema.freeze
 
 require "ruby-prof"
 

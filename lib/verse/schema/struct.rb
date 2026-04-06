@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "stringio"
+
 require_relative "./field"
 require_relative "./result"
 require_relative "./error_builder"
@@ -272,90 +274,73 @@ module Verse
       def freeze
         return self if frozen?
 
-        @cache_field_name = @fields.map(&:key)
-        @compiled_calls = []
+        @cache_field_name = @fields.map(&:key).freeze
+
+        compile_store = begin
+          idx = 0
+
+          proc do |value|
+            var_name = "@_compiled_#{idx}"
+
+            instance_variable_set(var_name, value)
+
+            idx += 1
+            var_name
+          end
+        end
+
+        out = StringIO.new
+
+        out.puts "def _validate_hash_compiled(compiled_context)"
 
         @fields.each do |field|
           key_sym = field.key
+          key_sym_str = key_sym.inspect
 
           if (over = field.opts[:over])
-            @compiled_calls << proc do |compiled_context|
-              compiled_context.locals[:selector] = compiled_context.output[over]
-            end
+            out.puts "  compiled_context.locals[:selector] = compiled_context.output[#{compile_store.(over)}]"
           end
 
-          @compiled_calls << if field.default?
-                               proc do |compiled_context|
-                                 value = compiled_context.input.fetch(key_sym){ field.default }
+          stored_field = compile_store.(field)
+          if field.default?
+            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}){ #{stored_field}.default }"
+            out.puts "  #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+          elsif field.required?
+            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  if value == Nothing"
+            out.puts "    compiled_context.error_builder.add(#{key_sym_str}, \"is required\")"
+            out.puts "  else"
+            out.puts "    #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+            out.puts "  end"
 
-                                 field.apply(
-                                   value,
-                                   compiled_context.output,
-                                   compiled_context.error_builder,
-                                   compiled_context.locals,
-                                   compiled_context.strict
-                                 )
-                               end
-                             elsif field.required?
-                               proc do |compiled_context|
-                                 value = compiled_context.input.fetch(key_sym, Nothing)
-
-                                 if value == Nothing
-                                   compiled_context.error_builder.add(key_sym, "is required")
-                                   next
-                                 end
-
-                                 field.apply(
-                                   value,
-                                   compiled_context.output,
-                                   compiled_context.error_builder,
-                                   compiled_context.locals,
-                                   compiled_context.strict
-                                 )
-                               end
-                             else
-                               proc do |compiled_context|
-                                 value = compiled_context.input.fetch(key_sym, Nothing)
-
-                                 next if value == Nothing
-
-                                 field.apply(
-                                   value,
-                                   compiled_context.output,
-                                   compiled_context.error_builder,
-                                   compiled_context.locals,
-                                   compiled_context.strict
-                                 )
-                               end
-                             end
+          else
+            out.puts "  value = compiled_context.input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  if value != Nothing"
+            out.puts "    #{stored_field}.apply(value, compiled_context.output, compiled_context.error_builder, compiled_context.locals, compiled_context.strict)"
+            out.puts "  end"
+          end
         end
 
         if !@extra_fields
-          @compiled_calls << proc do |compiled_context|
-            next unless compiled_context.strict
-
-            extra_keys = compiled_context.input.keys - @cache_field_name
-
-            if extra_keys.any?
-              extra_keys.each do |key|
-                compiled_context.error_builder.add(key, "is not allowed")
-              end
-            end
-          end
+          out.puts "  if compiled_context.strict"
+          out.puts "    extra_keys = compiled_context.input.keys - @cache_field_name"
+          out.puts "    if extra_keys.any?"
+          out.puts "      extra_keys.each do |key|"
+          out.puts "        compiled_context.error_builder.add(key, \"is not allowed\")"
+          out.puts "      end"
+          out.puts "    end"
+          out.puts "  end"
         end
 
         if @post_processors
-          @compiled_calls << proc do |compiled_context|
-            next unless compiled_context.error_builder.errors.empty?
-
-            compiled_context.output = @post_processors.call(
-              compiled_context.output,
-              nil,
-              compiled_context.error_builder,
-              **compiled_context.locals
-            )
-          end
+          out.puts "  if compiled_context.error_builder.errors.empty?"
+          out.puts "    compiled_context.output = @post_processors.call(compiled_context.output, nil, compiled_context.error_builder, **compiled_context.locals)"
+          out.puts "  end"
         end
+
+        out.puts "end"
+
+        instance_eval(out.string)
 
         super
       end
@@ -385,9 +370,7 @@ module Verse
 
         compiled_context = CompiledContext.new(input, error_builder, locals, strict, output)
 
-        @compiled_calls.each do |call|
-          call.call(compiled_context)
-        end
+        _validate_hash_compiled(compiled_context)
 
         Result.new(compiled_context.output, compiled_context.error_builder.errors)
       end
