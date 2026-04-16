@@ -3,8 +3,6 @@
 module Verse
   module Schema
     module Optionable
-      NOTHING = Object.new.freeze
-
       def self.included(base)
         base.extend ClassMethods
       end
@@ -16,8 +14,8 @@ module Verse
 
           case default
           when Proc
-            define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
-              if value == Verse::Schema::Optionable::NOTHING
+            define_method(name) do |value = Nothing|
+              if value == Nothing
                 return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
 
                 value = instance_exec(&default)
@@ -29,8 +27,8 @@ module Verse
               end
             end
           else
-            define_method(name) do |value = Verse::Schema::Optionable::NOTHING|
-              if value == Verse::Schema::Optionable::NOTHING
+            define_method(name) do |value = Nothing|
+              if value == Nothing
                 return instance_variable_get(iv_name) if instance_variable_defined?(iv_name)
 
                 default

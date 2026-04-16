@@ -95,22 +95,92 @@ module Verse
         if values.is_a?(Array)
           @dataclass_schema.values = values.map do |value|
             if value.is_a?(Base)
-              value.dataclass_schema
+              value.respond_to?(:dataclass) ? value.dataclass : value.dataclass_schema
             else
               value
             end
           end
         elsif values.is_a?(Base)
-          @dataclass_schema.values = values.dataclass_schema
+          @dataclass_schema.values = values.respond_to?(:dataclass) ? values.dataclass : values.dataclass_schema
         end
 
         @dataclass_schema
       end
 
-      def inspect
+      # Create a value object class from the schema.
+      # Returns a Verse::Schema::Dataclass subclass wrapping a Hash.
+      # Includes Enumerable and delegates common Hash methods.
+      #
+      # @param block [Proc] Optional block evaluated in the context of the new class.
+      # @return [Class<Verse::Schema::Dataclass>] The generated dataclass.
+      def dataclass(&block)
+        return @dataclass if @dataclass
+
+        # Create the class early so recursive schemas can reference it
+        @dataclass = Class.new(Dataclass)
+
+        # Build dataclass_schema (may recursively trigger nested dataclass creation)
+        dc_schema = self.dataclass_schema
+
+        @dataclass.class_eval do
+          include Enumerable
+          extend Forwardable
+
+          def_delegators :@data, :[], :fetch, :key?, :has_key?, :keys, :values, :size, :empty?
+
+          define_singleton_method(:schema) { dc_schema }
+
+          define_singleton_method(:from_raw) do |data|
+            instance = allocate
+            instance.instance_variable_set(:@data, data.freeze)
+            instance.freeze
+            instance
+          end
+
+          define_singleton_method(:new) do |input, validate: true|
+            unless validate
+              return from_raw(input)
+            end
+
+            result = dc_schema.validate(input)
+
+            if result.success?
+              from_raw(result.value)
+            else
+              raise InvalidSchemaError, result.errors
+            end
+          end
+
+          define_method(:each) { |&blk| @data.each(&blk) }
+
+          define_method(:to_h) { @data.dup }
+
+          define_method(:==) do |other|
+            case other
+            when self.class then @data == other.to_h
+            when Hash then @data == other
+            else false
+            end
+          end
+          alias_method :eql?, :==
+
+          define_method(:hash) { [self.class, @data].hash }
+
+          define_method(:inspect) { "#<dictionary #{@data.inspect}>" }
+          alias_method :to_s, :inspect
+
+          class_eval(&block) if block
+        end
+
+        @dataclass
+      end
+
+      def inspect(visited = Set.new)
         # Keys are always symbols, so only show value types.
         # Handle cases where values might be arrays (unions) or schema objects.
-        value_types_string = (@values || [Object]).map(&:inspect).join("|")
+        value_types_string = (@values || [Object]).map { |v|
+          v.is_a?(Base) ? v.inspect(visited) : v.inspect
+        }.join("|")
 
         "#<dictionary<#{value_types_string}> 0x#{object_id.to_s(16)}>"
       end
@@ -143,10 +213,11 @@ module Verse
             coalesced_value = coalesced_value.value
           end
 
-          output[key.to_sym] = coalesced_value
-          locals[:__path__].pop
+          output[key_sym] = coalesced_value
         rescue Coalescer::Error => e
           error_builder.add(key, e.message, **locals)
+        ensure
+          locals[:__path__].pop
         end
 
         if @post_processors && error_builder.errors.empty?

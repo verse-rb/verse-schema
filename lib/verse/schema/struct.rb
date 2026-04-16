@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "stringio"
+
 require_relative "./field"
 require_relative "./result"
 require_relative "./error_builder"
@@ -9,6 +11,10 @@ require_relative "./invalid_schema_error"
 module Verse
   module Schema
     class Struct < Base
+      CompiledContext = ::Struct.new(
+        :input, :error_builder, :locals, :strict, :output
+      )
+
       attr_accessor :fields
 
       # Initialize a new schema.
@@ -85,9 +91,13 @@ module Verse
           return Result.new({}, error_builder.errors)
         end
 
-        locals = locals.dup # Ensure they are not modified
+        locals = { __path__: [] }.merge(locals) # Duplicate locals to prevent modification
 
-        validate_hash(input, error_builder, locals, strict)
+        if frozen?
+          validate_hash_compiled(input, error_builder, locals, strict)
+        else
+          validate_hash(input, error_builder, locals, strict)
+        end
       end
 
       def dup
@@ -176,7 +186,7 @@ module Verse
               type.map do |t|
                 next t unless t.is_a?(Base)
 
-                t.dataclass_schema
+                t.respond_to?(:dataclass) ? t.dataclass : t.dataclass_schema
               end,
               field.opts.dup,
               post_processors: field.post_processors&.dup
@@ -184,7 +194,7 @@ module Verse
           elsif type.is_a?(Base)
             Field.new(
               field.name,
-              type.dataclass_schema,
+              type.respond_to?(:dataclass) ? type.dataclass : type.dataclass_schema,
               field.opts.dup,
               post_processors: field.post_processors&.dup
             )
@@ -193,76 +203,254 @@ module Verse
           end
         end
 
-        this = self
-        fields_map = fields.map(&:name)
-
-        @dataclass_schema.transform do |value|
-          next value unless value.is_a?(Hash)
-
-          if this.extra_fields?
-            standard_fields = value.slice(*fields_map)
-            extra_fields = value.except(*fields_map)
-
-            this.dataclass.from_raw(**standard_fields, extra_fields:)
-          else
-            this.dataclass.from_raw(**value)
-          end
-        end
+        @dataclass_schema.freeze
       end
 
       # Create a value object class from the schema.
+      # Returns a Verse::Schema::Dataclass subclass with field accessors.
+      #
+      # @param block [Proc] Optional block evaluated in the context of the new class.
+      # @return [Class<Verse::Schema::Dataclass>] The generated dataclass.
       def dataclass(&block)
         return @dataclass if @dataclass
 
-        fields = @fields.map(&:name)
+        fields_list = @fields.map(&:name)
+        fields_list << :extra_fields if extra_fields?
 
-        dataclass_schema = self.dataclass_schema
+        # Create the class early so recursive schemas can reference it
+        @dataclass = Class.new(Dataclass)
 
-        fields << :extra_fields if extra_fields?
+        # Build dataclass_schema (may recursively trigger nested dataclass creation)
+        dc_schema = self.dataclass_schema
 
-        # Special case for empty schema (yeah, I know, it happens in my production code...)
-        @dataclass = if fields.empty?
-                       Class.new do
-                         def self.from_raw(*)=new
-                         def self.schema = dataclass_schema
+        # Special case for empty schema
+        if fields_list.empty?
+          @dataclass.class_eval do
+            define_singleton_method(:schema) { dc_schema }
+            define_singleton_method(:from_raw) { |_input = nil| allocate.freeze }
 
-                         class_eval(&block) if block
-                       end
-                     else
-                       ::Struct.new(*fields, keyword_init: true) do
-                         # Redefine new method
-                         define_singleton_method(:from_raw, &method(:new))
+            define_singleton_method(:new) do |input = {}, validate: true|
+              unless validate
+                return from_raw(input)
+              end
 
-                         define_singleton_method(:new) do |*args, **kwargs|
-                           # Use the schema to generate the hash for our record
-                           if args.size > 1
-                             raise ArgumentError, "You cannot pass more than one argument"
-                           end
+              result = dc_schema.validate(input)
+              raise InvalidSchemaError, result.errors unless result.success?
 
-                           if args.size == 1
-                             if kwargs.any?
-                               raise ArgumentError, "You cannot pass both a hash and keyword arguments"
-                             end
+              from_raw(result.value)
+            end
 
-                             kwargs = args.first
-                           end
+            class_eval(&block) if block
+          end
 
-                           dataclass_schema.new(kwargs)
-                         end
+          return @dataclass
+        end
 
-                         define_singleton_method(:schema){ dataclass_schema }
+        fields_frozen = fields_list.dup.freeze
 
-                         class_eval(&block) if block
-                       end
-                     end
+        # Pre-compute ivar names to avoid repeated string interpolation
+        ivar_map = fields_frozen.map { |f| [:"@#{f}", f] }.freeze
+        has_extra_fields = extra_fields?
+
+        @dataclass.class_eval do
+          attr_reader(*fields_frozen)
+
+          define_singleton_method(:members) { fields_frozen }
+          define_singleton_method(:schema) { dc_schema }
+
+          # Accept a plain Hash instead of **kwargs to avoid double hash allocation
+          define_singleton_method(:from_raw) do |values_hash|
+            instance = allocate
+            ivar_map.each do |(ivar, fname)|
+              instance.instance_variable_set(ivar, values_hash[fname])
+            end
+            instance.freeze
+            instance
+          end
+
+          # Avoid *args (allocates Array) — use optional positional + **kwargs
+          if has_extra_fields
+            define_singleton_method(:new) do |input = Nothing, validate: true, **kwargs|
+              if input.equal?(Nothing)
+                input = kwargs
+              elsif !kwargs.empty?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
+
+              unless validate
+                return from_raw(input)
+              end
+
+              result = dc_schema.validate(input)
+
+              if result.success?
+                value = result.value
+                standard_fields = value.slice(*fields_frozen)
+                extra = value.except(*fields_frozen)
+                standard_fields[:extra_fields] = extra
+                from_raw(standard_fields)
+              else
+                raise InvalidSchemaError, result.errors
+              end
+            end
+          else
+            define_singleton_method(:new) do |input = Nothing, validate: true, **kwargs|
+              if input.equal?(Nothing)
+                input = kwargs
+              elsif !kwargs.empty?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
+
+              unless validate
+                return from_raw(input)
+              end
+
+              result = dc_schema.validate(input)
+
+              if result.success?
+                from_raw(result.value)
+              else
+                raise InvalidSchemaError, result.errors
+              end
+            end
+          end
+
+          # Use instance_variable_get instead of send for better performance
+          define_method(:to_h) do
+            ivar_map.each_with_object({}) { |(ivar, fname), h| h[fname] = instance_variable_get(ivar) }
+          end
+
+          define_method(:==) do |other|
+            return false unless other.is_a?(self.class)
+
+            ivar_map.all? { |(ivar, _)| instance_variable_get(ivar) == other.instance_variable_get(ivar) }
+          end
+          alias_method :eql?, :==
+
+          define_method(:hash) do
+            [self.class, *ivar_map.map { |(ivar, _)| instance_variable_get(ivar) }].hash
+          end
+
+          define_method(:deconstruct_keys) do |keys|
+            if keys.nil?
+              to_h
+            else
+              keys.each_with_object({}) do |key, h|
+                h[key] = instance_variable_get(:"@#{key}") if fields_frozen.include?(key)
+              end
+            end
+          end
+
+          define_method(:inspect) do
+            pairs = ivar_map.map { |(ivar, fname)| "#{fname}: #{instance_variable_get(ivar).inspect}" }
+            "#<data #{pairs.join(', ')}>"
+          end
+          alias_method :to_s, :inspect
+
+          class_eval(&block) if block
+        end
+
+        @dataclass
       end
 
-      def inspect
+      def freeze
+        return self if frozen?
+
+        @cache_field_name = @fields.map(&:key).freeze
+
+        compile_store = begin
+          idx = 0
+
+          proc do |value|
+            var_name = "@_compiled_#{idx}"
+
+            instance_variable_set(var_name, value)
+
+            idx += 1
+            var_name
+          end
+        end
+
+        out = StringIO.new
+
+        out.puts "def _validate_hash_compiled(input, error_builder, locals, strict, output)"
+
+        @fields.each do |field|
+          field.freeze
+
+          key_sym = field.key
+          key_sym_str = key_sym.inspect
+
+          if (over = field.opts[:over])
+            out.puts "  locals[:selector] = output[#{compile_store.(over)}]"
+          end
+
+          stored_field = compile_store.(field)
+          if field.default?
+            out.puts "  value = input.fetch(#{key_sym_str}){ #{stored_field}.default }"
+            out.puts "  #{stored_field}.apply(value, output, error_builder, locals, strict)"
+          elsif field.required?
+            out.puts "  value = input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  if value == Nothing"
+            out.puts "    error_builder.add(#{key_sym_str}, \"is required\")"
+            out.puts "  else"
+            out.puts "    #{stored_field}.apply(value, output, error_builder, locals, strict)"
+            out.puts "  end"
+
+          else
+            out.puts "  value = input.fetch(#{key_sym_str}, Nothing)"
+            out.puts "  if value != Nothing"
+            out.puts "    #{stored_field}.apply(value, output, error_builder, locals, strict)"
+            out.puts "  end"
+          end
+        end
+
+        if !@extra_fields
+          out.puts "  if strict"
+          out.puts "    extra_keys = input.keys - @cache_field_name"
+          out.puts "    if extra_keys.any?"
+          out.puts "      extra_keys.each do |key|"
+          out.puts "        error_builder.add(key, \"is not allowed\")"
+          out.puts "      end"
+          out.puts "    end"
+          out.puts "  end"
+        end
+
+        if @post_processors
+          out.puts "  if error_builder.errors.empty?"
+          out.puts "    output = @post_processors.call(output, nil, error_builder, **locals)"
+          out.puts "  end"
+        end
+
+        out.puts "end"
+
+        instance_eval(out.string)
+
+        super
+      end
+
+      def inspect(visited=Set.new)
+        if visited.include?(object_id)
+          return "#<struct{...} 0x#{object_id.to_s(16)}>"
+        end
+
+        visited << object_id
+
         fields_string = @fields.map do |field|
           type_str = if field.type.is_a?(Array)
-                       field.type.map(&:inspect).join("|")
+                       field.type.map{ |x|
+                          if x.is_a?(Base)
+                            x.inspect(visited)
+                          else
+                            x.inspect
+                          end
+                       }.join("|")
                      else
-                       field.type.inspect
+                       if field.type.is_a?(Base)
+                          field.type.inspect(visited)
+                        else
+                         field.type.inspect
+                        end
                      end
 
           optional_marker = field.optional? ? "?" : ""
@@ -276,9 +464,18 @@ module Verse
 
       protected
 
-      def validate_hash(input, error_builder, locals, strict)
-        locals[:__path__] ||= []
+      def validate_hash_compiled(input, error_builder, locals, strict)
+        input = input.transform_keys(&:to_sym)
+        output = @extra_fields ? input : {}
 
+        compiled_context = CompiledContext.new(input, error_builder, locals, strict, output)
+
+        _validate_hash_compiled(input, error_builder, locals, strict, output)
+
+        Result.new(compiled_context.output, compiled_context.error_builder.errors)
+      end
+
+      def validate_hash(input, error_builder, locals, strict)
         input = input.transform_keys(&:to_sym)
         output = @extra_fields ? input : {}
 
@@ -287,14 +484,13 @@ module Verse
         @fields.each do |field|
           key_sym = field.key
 
-          exists = true
-          value = input.fetch(key_sym) { exists = false }
+          value = input.fetch(key_sym, Nothing)
 
           if (over = field.opts[:over])
             locals[:selector] = output[over]
           end
 
-          if exists
+          if value != Nothing
             field.apply(value, output, error_builder, locals, strict)
           elsif field.default?
             field.apply(field.default, output, error_builder, locals, strict)

@@ -106,13 +106,13 @@ module Verse
           if value.is_a?(Array)
             value.map do |v|
               if v.is_a?(Base)
-                v.dataclass_schema
+                v.respond_to?(:dataclass) ? v.dataclass : v.dataclass_schema
               else
                 v
               end
             end
           elsif value.is_a?(Base)
-            value.dataclass_schema
+            value.respond_to?(:dataclass) ? value.dataclass : value.dataclass_schema
           else
             value
           end

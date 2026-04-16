@@ -5,6 +5,7 @@ require_relative "../../../spec_helper"
 RSpec.describe "Under the hood", :readme do
   context "Add Custom coalescing rules", :readme_section do
     it "demonstrates custom type registration", skip: "Example only" do
+      # :nocov:
       # This is an example of how to register a custom type
       # rubocop:disable Lint/ConstantDefinitionInBlock
       class Email
@@ -40,6 +41,7 @@ RSpec.describe "Under the hood", :readme do
       })
       expect(result.success?).to be true
       expect(result.value[:email]).to be_a(Email)
+      # :nocov:
     end
   end
 
@@ -98,6 +100,7 @@ RSpec.describe "Under the hood", :readme do
 
   context "Field Extensions", :readme_section do
     it "demonstrates adding features to fields", skip: "Example only" do
+      # :nocov:
       # rubocop:disable Lint/ConstantDefinitionInBlock
 
       # For now, you can reopen the Field class to add macros or methods
@@ -128,6 +131,7 @@ RSpec.describe "Under the hood", :readme do
           end
         end
       end
+      # :nocov:
       # rubocop:enable Lint/ConstantDefinitionInBlock
 
       # Example of adding optional information to fields

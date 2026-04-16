@@ -128,20 +128,90 @@ module Verse
         if values.is_a?(Array)
           @dataclass_schema.values = values.map do |value|
             if value.is_a?(Base)
-              value.dataclass_schema
+              value.respond_to?(:dataclass) ? value.dataclass : value.dataclass_schema
             else
               value
             end
           end
         elsif values.is_a?(Base)
-          @dataclass_schema.values = values.dataclass_schema
+          @dataclass_schema.values = values.respond_to?(:dataclass) ? values.dataclass : values.dataclass_schema
         end
 
         @dataclass_schema
       end
 
-      def inspect
-        types_string = @values.map(&:inspect).join("|")
+      # Create a value object class from the schema.
+      # Returns a Verse::Schema::Dataclass subclass wrapping an Array.
+      # Includes Enumerable and delegates common Array methods.
+      #
+      # @param block [Proc] Optional block evaluated in the context of the new class.
+      # @return [Class<Verse::Schema::Dataclass>] The generated dataclass.
+      def dataclass(&block)
+        return @dataclass if @dataclass
+
+        # Create the class early so recursive schemas can reference it
+        @dataclass = Class.new(Dataclass)
+
+        # Build dataclass_schema (may recursively trigger nested dataclass creation)
+        dc_schema = self.dataclass_schema
+
+        @dataclass.class_eval do
+          include Enumerable
+          extend Forwardable
+
+          def_delegators :@data, :[], :size, :length, :empty?, :first, :last
+
+          define_singleton_method(:schema) { dc_schema }
+
+          define_singleton_method(:from_raw) do |data|
+            instance = allocate
+            instance.instance_variable_set(:@data, data.freeze)
+            instance.freeze
+            instance
+          end
+
+          define_singleton_method(:new) do |input, validate: true|
+            unless validate
+              return from_raw(input)
+            end
+
+            result = dc_schema.validate(input)
+
+            if result.success?
+              from_raw(result.value)
+            else
+              raise InvalidSchemaError, result.errors
+            end
+          end
+
+          define_method(:each) { |&blk| @data.each(&blk) }
+
+          define_method(:to_a) { @data.dup }
+
+          define_method(:==) do |other|
+            case other
+            when self.class then @data == other.to_a
+            when Array then @data == other
+            else false
+            end
+          end
+          alias_method :eql?, :==
+
+          define_method(:hash) { [self.class, @data].hash }
+
+          define_method(:inspect) { "#<collection #{@data.inspect}>" }
+          alias_method :to_s, :inspect
+
+          class_eval(&block) if block
+        end
+
+        @dataclass
+      end
+
+      def inspect(visited = Set.new)
+        types_string = @values.map { |v|
+          v.is_a?(Base) ? v.inspect(visited) : v.inspect
+        }.join("|")
         # Use ::collection to distinguish from Scalar's inspect
         "#<collection<#{types_string}> 0x#{object_id.to_s(16)}>"
       end

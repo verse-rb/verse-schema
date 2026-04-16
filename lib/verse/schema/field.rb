@@ -348,6 +348,15 @@ module Verse
 
       # :nodoc:
       def apply(value, output, error_builder, locals, strict)
+        if frozen?
+          _apply_compiled(value, output, error_builder, locals, strict)
+        else
+          _apply_non_compiled(value, output, error_builder, locals, strict)
+        end
+      end
+
+      # :nodoc:
+      def _apply_non_compiled(value, output, error_builder, locals, strict)
         locals[:__path__].push(@name)
 
         if @type.is_a?(Base)
@@ -387,6 +396,53 @@ module Verse
       ensure
         locals[:__path__].pop
       end
+
+      def freeze
+        return if frozen?
+
+        # @post_processors.freeze if @post_processors
+
+        # compile the field
+        out = StringIO.new
+
+        out.puts "def _apply_compiled(value, output, error_builder, locals, strict)"
+        out.puts "  locals[:__path__].push(@name)"
+        if @type.is_a?(Base)
+          out.puts "  error_builder.context(@name) do |error_builder|"
+          out.puts "    result = @type.validate(value, error_builder:, locals:, strict:)"
+
+          if @post_processors
+            out.puts "    if error_builder.errors.any?"
+            out.puts "      output[@name] = result.value"
+            out.puts "    else"
+            out.puts "      output[@name] = @post_processors.call(result.value, @name, error_builder, **locals)"
+            out.puts "    end"
+          else
+            out.puts "    output[@name] = result.value"
+          end
+          out.puts "  end"
+        else
+          out.puts "  coalesced_value = Coalescer.transform(value, @type, @opts, locals:, strict:)"
+          out.puts "  if coalesced_value.is_a?(Result)"
+          out.puts "    error_builder.combine(@name, coalesced_value.errors)"
+          out.puts "    coalesced_value = coalesced_value.value"
+          out.puts "  end"
+
+          if @post_processors
+            out.puts "  output[@name] = @post_processors.call(coalesced_value, @name, error_builder, **locals)"
+          else
+            out.puts "  output[@name] = coalesced_value"
+          end
+        end
+        out.puts "ensure"
+        out.puts "  locals[:__path__].pop"
+        out.puts "end"
+
+        instance_eval(out.string)
+
+        super
+      end
+
     end
   end
 end

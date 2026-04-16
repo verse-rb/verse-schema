@@ -261,12 +261,17 @@ RSpec.describe "2. Complex Structures", :readme do
         field?(:location, String)
       end
 
+      anything_schema = Verse::Schema.define do
+        extra_fields
+      end
+
       # Define a schema with a selector field
       schema = Verse::Schema.define do
-        field(:type, Symbol).in?(%i[facebook google])
+        field(:type, Symbol)
         field(:data, {
           facebook: facebook_schema,
-          google: google_schema
+          google: google_schema,
+          __else__: anything_schema
         }, over: :type)
       end
 
@@ -281,8 +286,16 @@ RSpec.describe "2. Complex Structures", :readme do
         data: { search: "conference 2023" }
       })
 
+      result3 = schema.validate({
+        type: :unknown,
+        data: { anything: true }
+      })
+
       expect(result1.success?).to be true
       expect(result2.success?).to be true
+
+      expect(result3.success?).to be true
+      expect(result3.value[:data]).to eq({ anything: true })
 
       # Invalid case - wrong type for the selector
       invalid_result = schema.validate({

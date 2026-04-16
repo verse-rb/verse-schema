@@ -27,20 +27,20 @@ module Verse
         when Numeric
           value.to_s
         else
-          raise Coalescer::Error, "must be a string"
+          throw :fail, Coalescer::Error.new("must be a string")
         end
       end
 
       register(Integer) do |value|
         Integer(value)
       rescue TypeError, ArgumentError
-        raise Coalescer::Error, "must be an integer"
+        throw :fail, Coalescer::Error.new("must be an integer")
       end
 
       register(Float) do |value|
         Float(value)
       rescue TypeError, ArgumentError
-        raise Coalescer::Error, "must be a float"
+        throw :fail, Coalescer::Error.new("must be a float")
       end
 
       register(Symbol) do |value|
@@ -50,11 +50,11 @@ module Verse
         when Numeric
           value.to_s.to_sym
         when String
-          raise Coalescer::Error, "must be a symbol" if value.empty?
+          throw :fail, Coalescer::Error.new("must be a symbol") if value.empty?
 
           value.to_sym
         else
-          raise Coalescer::Error, "must be a symbol"
+          throw :fail, Coalescer::Error.new("must be a symbol")
         end
       end
 
@@ -73,10 +73,10 @@ module Verse
             Time.parse(value)
           end
         else
-          raise Coalescer::Error, "must be a datetime"
+          throw :fail, Coalescer::Error.new("must be a datetime")
         end
       rescue ArgumentError
-        raise Coalescer::Error, "must be a datetime"
+        throw :fail, Coalescer::Error.new("must be a datetime")
       end
 
       register(Date) do |value|
@@ -86,30 +86,30 @@ module Verse
         when String
           Date.parse(value)
         else
-          raise Coalescer::Error, "must be a date"
+          throw :fail, Coalescer::Error.new("must be a date")
         end
       rescue Date::Error
-        raise Coalescer::Error, "must be a date"
+        throw :fail, Coalescer::Error.new("must be a date")
       end
 
       register(Hash) do |value|
         # Open hash without contract.
 
-        raise Coalescer::Error, "must be a hash" unless value.is_a?(Hash)
+        throw :fail, Coalescer::Error.new("must be a hash") unless value.is_a?(Hash)
 
         Coalescer.deep_symbolize_keys(value)
       end
 
       register(Array) do |value|
-        raise Coalescer::Error, "must be an array" unless value.is_a?(Array)
+        throw :fail, Coalescer::Error.new("must be an array") unless value.is_a?(Array)
 
         value
       end
 
       register(nil, NilClass) do |value|
-        next nil if value.nil? || value == "" || value == "null"
+        next nil if value.nil? || value == "" || value == "null" # json handling
 
-        raise Coalescer::Error, "must be nil"
+        throw :fail, Coalescer::Error.new("must be nil")
       end
 
       register(TrueClass, FalseClass, true, false) do |value|
@@ -118,13 +118,13 @@ module Verse
           value
         when String
           next true if %w[t y true yes].include?(value)
-          next false if %[f n false no].include?(value)
+          next false if %w[f n false no].include?(value)
 
-          raise Coalescer::Error, "must be a boolean"
+          throw :fail, Coalescer::Error.new("must be a boolean")
         when Numeric
           value != 0
         else
-          raise Coalescer::Error, "must be a boolean"
+          throw :fail, Coalescer::Error.new("must be a boolean")
         end
       end
     end
