@@ -186,7 +186,7 @@ module Verse
               type.map do |t|
                 next t unless t.is_a?(Base)
 
-                t.dataclass_schema
+                t.respond_to?(:dataclass) ? t.dataclass : t.dataclass_schema
               end,
               field.opts.dup,
               post_processors: field.post_processors&.dup
@@ -194,7 +194,7 @@ module Verse
           elsif type.is_a?(Base)
             Field.new(
               field.name,
-              type.dataclass_schema,
+              type.respond_to?(:dataclass) ? type.dataclass : type.dataclass_schema,
               field.opts.dup,
               post_processors: field.post_processors&.dup
             )
@@ -207,67 +207,150 @@ module Verse
       end
 
       # Create a value object class from the schema.
+      # Returns a Verse::Schema::Dataclass subclass with field accessors.
+      #
+      # @param block [Proc] Optional block evaluated in the context of the new class.
+      # @return [Class<Verse::Schema::Dataclass>] The generated dataclass.
       def dataclass(&block)
         return @dataclass if @dataclass
 
-        fields = @fields.map(&:name)
+        fields_list = @fields.map(&:name)
+        fields_list << :extra_fields if extra_fields?
 
-        dataclass_schema = self.dataclass_schema
+        # Create the class early so recursive schemas can reference it
+        @dataclass = Class.new(Dataclass)
 
-        fields << :extra_fields if extra_fields?
+        # Build dataclass_schema (may recursively trigger nested dataclass creation)
+        dc_schema = self.dataclass_schema
 
-        # Special case for empty schema (yeah, I know, it happens in my production code...)
-        if fields.empty?
-          return @dataclass = Class.new do
-            def self.from_raw(*)=new
-            def self.schema = dataclass_schema
+        # Special case for empty schema
+        if fields_list.empty?
+          @dataclass.class_eval do
+            define_singleton_method(:schema) { dc_schema }
+            define_singleton_method(:from_raw) { |_input = nil| allocate.freeze }
+
+            define_singleton_method(:new) do |input = {}, validate: true|
+              unless validate
+                return from_raw(input)
+              end
+
+              result = dc_schema.validate(input)
+              raise InvalidSchemaError, result.errors unless result.success?
+
+              from_raw(result.value)
+            end
 
             class_eval(&block) if block
           end
+
+          return @dataclass
         end
 
-        this = self
-        fields_map = fields.map(&:name)
+        fields_frozen = fields_list.dup.freeze
 
-        @dataclass = ::Struct.new(*fields, keyword_init: true) do
-          # Redefine new method
-          define_singleton_method(:from_raw, &method(:new))
+        # Pre-compute ivar names to avoid repeated string interpolation
+        ivar_map = fields_frozen.map { |f| [:"@#{f}", f] }.freeze
+        has_extra_fields = extra_fields?
 
-          define_singleton_method(:new) do |*args, **kwargs|
-            # Use the schema to generate the hash for our record
-            args_size = args.size
+        @dataclass.class_eval do
+          attr_reader(*fields_frozen)
 
-            if args_size > 1
-              raise ArgumentError, "You cannot pass more than one argument"
+          define_singleton_method(:members) { fields_frozen }
+          define_singleton_method(:schema) { dc_schema }
+
+          # Accept a plain Hash instead of **kwargs to avoid double hash allocation
+          define_singleton_method(:from_raw) do |values_hash|
+            instance = allocate
+            ivar_map.each do |(ivar, fname)|
+              instance.instance_variable_set(ivar, values_hash[fname])
             end
+            instance.freeze
+            instance
+          end
 
-            if args_size == 1
-              if kwargs.any?
+          # Avoid *args (allocates Array) — use optional positional + **kwargs
+          if has_extra_fields
+            define_singleton_method(:new) do |input = Nothing, validate: true, **kwargs|
+              if input.equal?(Nothing)
+                input = kwargs
+              elsif !kwargs.empty?
                 raise ArgumentError, "You cannot pass both a hash and keyword arguments"
               end
 
-              kwargs = args.first
-            end
-
-            result = dataclass_schema.validate(kwargs)
-
-            if result.success?
-              if this.extra_fields?
-                standard_fields = result.value.slice(*fields_map)
-                extra_fields = result.value.except(*fields_map)
-                this.dataclass.from_raw(**standard_fields, extra_fields:)
-              else
-                this.dataclass.from_raw(**result.value)
+              unless validate
+                return from_raw(input)
               end
-            else
-              raise InvalidSchemaError, result.errors
+
+              result = dc_schema.validate(input)
+
+              if result.success?
+                value = result.value
+                standard_fields = value.slice(*fields_frozen)
+                extra = value.except(*fields_frozen)
+                standard_fields[:extra_fields] = extra
+                from_raw(standard_fields)
+              else
+                raise InvalidSchemaError, result.errors
+              end
+            end
+          else
+            define_singleton_method(:new) do |input = Nothing, validate: true, **kwargs|
+              if input.equal?(Nothing)
+                input = kwargs
+              elsif !kwargs.empty?
+                raise ArgumentError, "You cannot pass both a hash and keyword arguments"
+              end
+
+              unless validate
+                return from_raw(input)
+              end
+
+              result = dc_schema.validate(input)
+
+              if result.success?
+                from_raw(result.value)
+              else
+                raise InvalidSchemaError, result.errors
+              end
             end
           end
 
-          define_singleton_method(:schema){ dataclass_schema }
+          # Use instance_variable_get instead of send for better performance
+          define_method(:to_h) do
+            ivar_map.each_with_object({}) { |(ivar, fname), h| h[fname] = instance_variable_get(ivar) }
+          end
+
+          define_method(:==) do |other|
+            return false unless other.is_a?(self.class)
+
+            ivar_map.all? { |(ivar, _)| instance_variable_get(ivar) == other.instance_variable_get(ivar) }
+          end
+          alias_method :eql?, :==
+
+          define_method(:hash) do
+            [self.class, *ivar_map.map { |(ivar, _)| instance_variable_get(ivar) }].hash
+          end
+
+          define_method(:deconstruct_keys) do |keys|
+            if keys.nil?
+              to_h
+            else
+              keys.each_with_object({}) do |key, h|
+                h[key] = instance_variable_get(:"@#{key}") if fields_frozen.include?(key)
+              end
+            end
+          end
+
+          define_method(:inspect) do
+            pairs = ivar_map.map { |(ivar, fname)| "#{fname}: #{instance_variable_get(ivar).inspect}" }
+            "#<data #{pairs.join(', ')}>"
+          end
+          alias_method :to_s, :inspect
 
           class_eval(&block) if block
         end
+
+        @dataclass
       end
 
       def freeze
@@ -293,6 +376,8 @@ module Verse
         out.puts "def _validate_hash_compiled(input, error_builder, locals, strict, output)"
 
         @fields.each do |field|
+          field.freeze
+
           key_sym = field.key
           key_sym_str = key_sym.inspect
 
@@ -344,12 +429,28 @@ module Verse
         super
       end
 
-      def inspect
+      def inspect(visited=Set.new)
+        if visited.include?(object_id)
+          return "#<struct{...} 0x#{object_id.to_s(16)}>"
+        end
+
+        visited << object_id
+
         fields_string = @fields.map do |field|
           type_str = if field.type.is_a?(Array)
-                       field.type.map(&:inspect).join("|")
+                       field.type.map{ |x|
+                          if x.is_a?(Base)
+                            x.inspect(visited)
+                          else
+                            x.inspect
+                          end
+                       }.join("|")
                      else
-                       field.type.inspect
+                       if field.type.is_a?(Base)
+                          field.type.inspect(visited)
+                        else
+                         field.type.inspect
+                        end
                      end
 
           optional_marker = field.optional? ? "?" : ""

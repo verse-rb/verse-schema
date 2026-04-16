@@ -6,11 +6,31 @@ module Verse
       Error = Class.new(StandardError)
 
       @mapping = {}
+      @default_mapper_cache = {}
 
       DEFAULT_MAPPER = lambda do |type|
         if type.is_a?(Base)
           proc do |value, _opts, locals:, strict:|
             type.validate(value, locals:, strict:)
+          end
+        elsif type.is_a?(Class) && type < Dataclass
+          schema = type.schema
+          from_raw = type.method(:from_raw)
+          proc do |value, _opts, locals:, strict:|
+            # Already a dataclass instance of the right type — pass through
+            next value if value.is_a?(type)
+
+            result = schema.validate(value, locals:, strict:)
+
+            if result.success?
+              Result.new(from_raw.call(result.value), result.errors)
+            else
+              result
+            end
+          end
+        elsif type.is_a?(Class) && type < ::Struct && type.keyword_init?
+          proc do |value|
+            type.new(**value)
           end
         elsif type.is_a?(Class)
           proc do |value|
@@ -32,6 +52,12 @@ module Verse
           end
         end
 
+        # Lookup or lazily create & cache the mapper proc for a given type.
+        # Avoids re-creating procs on every call to transform for non-registered types.
+        def mapper_for(type)
+          @mapping[type] || (@default_mapper_cache[type] ||= DEFAULT_MAPPER.call(type))
+        end
+
         def transform(value, type, opts = {}, locals: {}, strict: false)
           if type.is_a?(Array)
             # fast-path for when the type match already
@@ -48,9 +74,7 @@ module Verse
             type.each do |t|
               converted = \
                 catch(:fail) do
-                  @mapping.fetch(t) do
-                    DEFAULT_MAPPER.call(t)
-                  end.call(value, opts, locals:, strict:)
+                  mapper_for(t).call(value, opts, locals:, strict:)
                 end
 
               if converted.is_a?(StandardError)
@@ -73,9 +97,7 @@ module Verse
             raise Error, (last_error_message || "invalid cast")
           else
             converted = catch(:fail) do
-              @mapping.fetch(type) do
-                DEFAULT_MAPPER.call(type)
-              end.call(value, opts, locals:, strict:)
+              mapper_for(type).call(value, opts, locals:, strict:)
             end
 
             return converted unless converted.is_a?(StandardError)

@@ -133,14 +133,16 @@ module Verse
         @dataclass_schema.values = values.map do |value|
           next value unless value.is_a?(Base)
 
-          value.dataclass_schema
+          value.respond_to?(:dataclass) ? value.dataclass : value.dataclass_schema
         end
 
         @dataclass_schema
       end
 
-      def inspect
-        types_string = @values.map(&:inspect).join("|")
+      def inspect(visited = Set.new)
+        types_string = @values.map { |v|
+          v.is_a?(Base) ? v.inspect(visited) : v.inspect
+        }.join("|")
         "#<scalar<#{types_string}> 0x#{object_id.to_s(16)}>"
       end
 

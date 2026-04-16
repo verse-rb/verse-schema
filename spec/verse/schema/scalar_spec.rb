@@ -257,12 +257,11 @@ RSpec.describe Verse::Schema::Scalar do
       expect(dc_schema.values).to eq(scalar_int.values)
     end
 
-    it "calls dataclass_schema on nested Base schemas within values array" do
-      expect(nested_struct_schema).to receive(:dataclass_schema).once
+    it "calls dataclass on nested Base schemas within values array" do
       dc_schema = scalar_with_struct.dataclass_schema
       expect(dc_schema.values[0]).to eq(String)
-      # Check if the second value is the result of the mocked call
-      expect(dc_schema.values[1]).to be_a(Verse::Schema::Struct) # Based on mock return
+      # Nested Base types that respond to `dataclass` are replaced with their dataclass class
+      expect(dc_schema.values[1]).to be < Verse::Schema::Dataclass
     end
 
     it "memoizes the result" do
@@ -272,13 +271,12 @@ RSpec.describe Verse::Schema::Scalar do
     end
 
     # Test case when the values array contains a single Base schema instance
-    it "calls dataclass_schema when values array contains a single Base schema" do
+    it "calls dataclass on nested Base schemas that support it" do
       # Initialize correctly with an array containing the nested schema
       scalar_with_single_nested = Verse::Schema::Scalar.new(values: [nested_struct_schema])
-      expect(nested_struct_schema).to receive(:dataclass_schema).once.and_call_original # Use and_call_original if mock allows
       dc_schema = scalar_with_single_nested.dataclass_schema
-      # The values array in the result should contain the dataclass_schema of the nested struct
-      expect(dc_schema.values.first).to be_a(Verse::Schema::Struct) # Check the type of the element in the array
+      # Nested Base types that respond to `dataclass` are replaced with their dataclass class
+      expect(dc_schema.values.first).to be < Verse::Schema::Dataclass
     end
   end
 end
